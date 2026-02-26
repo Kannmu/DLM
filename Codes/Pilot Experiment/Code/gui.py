@@ -174,6 +174,12 @@ class ExperimentApp(ctk.CTk):
                 except Exception as e:
                     self.after(0, lambda t=f"Index {i}: Exception {e}\n": self.textbox_demos.insert("end", t))
             
+            # Disable output after scanning to ensure silence
+            try:
+                self.controller.enable_output(False)
+            except Exception as e:
+                print(f"Error disabling output after scan: {e}")
+
             self.logic.stimulus_indices = found_map
             self.after(0, lambda t=f"\nAuto-mapped: {found_map}\n": self.textbox_demos.insert("end", t))
             

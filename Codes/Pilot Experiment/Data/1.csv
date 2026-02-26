@@ -1,3 +1,0 @@
-ParticipantID,Timestamp,Block,Trial,StimulusA,StimulusB,Chosen_Intensity,Chosen_Clarity,ReactionTime
-1,2026-02-26T14:10:53.268816,1,1,DLM_3,DLM_2,DLM_2,DLM_3,0
-1,2026-02-26T14:10:59.555874,1,2,ULM_L,DLM_3,ULM_L,DLM_3,0
