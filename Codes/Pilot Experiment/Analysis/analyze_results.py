@@ -12,7 +12,7 @@ except Exception:
     BinomialBayesMixedGLM = None
 
 sns.set_theme(style="whitegrid")
-plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial']
+plt.rcParams['font.sans-serif'] = ['Arial']
 plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['font.size'] = 14
 plt.rcParams['axes.labelsize'] = 17
@@ -133,7 +133,19 @@ def significance_label(p):
         return "*"
     return "n.s."
 
-def plot_scores_with_significance(scores, se, cov_scores, output_path, y_label):
+def format_method_name(name):
+    """
+    Formats method names like 'ULM_L' to LaTeX-style subscript.
+    Uses \mathregular to maintain the font style (Arial).
+    """
+    if '_' in name:
+        parts = name.split('_', 1)
+        base = parts[0]
+        sub = parts[1]
+        return rf"$\mathregular{{{base}}}_{{\mathregular{{{sub}}}}}$"
+    return name
+
+def plot_on_axis(ax, scores, se, cov_scores, y_label):
     scores_sorted = scores.sort_values(ascending=False)
     se_sorted = se.reindex(scores_sorted.index)
     ci = 1.96 * se_sorted
@@ -142,11 +154,16 @@ def plot_scores_with_significance(scores, se, cov_scores, output_path, y_label):
         'Score': scores_sorted.values,
         'CI': ci.values
     })
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax = sns.barplot(x='Method', y='Score', data=plot_df, hue='Method', palette="viridis", errorbar=None, ax=ax, zorder=2, legend=False)
+    sns.barplot(x='Method', y='Score', data=plot_df, hue='Method', palette="Greens", errorbar=None, ax=ax, zorder=2, legend=False)
     ax.errorbar(x=range(len(plot_df)), y=plot_df['Score'], yerr=plot_df['CI'], fmt='none', c='black', capsize=6, elinewidth=1.5, zorder=5, clip_on=False)
     ax.set_xlabel("Method", fontsize=plt.rcParams['axes.labelsize'], fontweight='bold')
     ax.set_ylabel(y_label, fontsize=plt.rcParams['axes.labelsize'], fontweight='bold')
+
+    # Format x-axis labels with subscripts
+    current_labels = [item.get_text() for item in ax.get_xticklabels()]
+    formatted_labels = [format_method_name(label) for label in current_labels]
+    ax.set_xticklabels(formatted_labels)
+
     ax.tick_params(axis='both', labelsize=plt.rcParams['xtick.labelsize'])
     ax.grid(axis='y', linestyle='--', alpha=0.7, zorder=1)
     ax.set_axisbelow(True)
@@ -180,6 +197,21 @@ def plot_scores_with_significance(scores, se, cov_scores, output_path, y_label):
         ax.set_ylim(y_min - span * 0.05, y + step)
     else:
         ax.set_ylim(y_min - span * 0.05, y_max + span * 0.1)
+
+def save_combined_plot(intensity_res, clarity_res, output_path):
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6), sharey=False)
+    
+    if intensity_res:
+        scores, se, cov_scores = intensity_res
+        plot_on_axis(axes[0], scores, se, cov_scores, "Relative Intensity Score (Log-odds ± 95% CI)")
+        axes[0].set_title("Intensity Preference", fontsize=20, fontweight='bold')
+    
+    if clarity_res:
+        scores, se, cov_scores = clarity_res
+        plot_on_axis(axes[1], scores, se, cov_scores, "Relative Clarity Score (Log-odds ± 95% CI)")
+        axes[1].set_title("Spatial Clarity Preference", fontsize=20, fontweight='bold')
+        
+    plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.show()
     plt.close()
@@ -243,16 +275,10 @@ def analyze_block(df, block_type, winner_col, output_dir, file_prefix):
         p_table.loc[b, a] = p
     print("Pairwise p-values (Wald):")
     print(p_table)
-    plot_scores_with_significance(
-        scores,
-        se,
-        cov_scores,
-        os.path.join(output_dir, f"{file_prefix}_ranking.png"),
-        "Bradley-Terry Score (Log-odds)"
-    )
+    return scores, se, cov_scores
 
 def main():
-    base_dir = r"d:\Data\OneDrive\Papers\DLM\Codes\Pilot Experiment"
+    base_dir = r"d:\Data\OneDrive\Papers\SWIM\Codes\Pilot Experiment"
     data_dir = os.path.join(base_dir, "Data")
     output_dir = os.path.join(base_dir, "Analysis")
     
@@ -266,7 +292,7 @@ def main():
         print("No data loaded. Exiting.")
         return
 
-    analyze_block(
+    res_intensity = analyze_block(
         df, 
         block_type='Intensity', 
         winner_col='Chosen_Intensity', 
@@ -274,13 +300,15 @@ def main():
         file_prefix='Intensity'
     )
     
-    analyze_block(
+    res_clarity = analyze_block(
         df, 
         block_type='Spatial', 
         winner_col='Chosen_Clarity', 
         output_dir=output_dir, 
         file_prefix='Clarity'
     )
+
+    save_combined_plot(res_intensity, res_clarity, os.path.join(output_dir, "Combined_Ranking.png"))
 
 if __name__ == "__main__":
     main()
