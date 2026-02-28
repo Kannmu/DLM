@@ -71,6 +71,67 @@ def build_long_format(subset, winner_col):
         })
     return pd.DataFrame(rows)
 
+
+def compute_zlog_rt(df, rt_col='ReactionTime', min_rt=0.2, max_rt=10.0):
+    df = df.copy()
+    df[rt_col] = pd.to_numeric(df[rt_col], errors='coerce')
+    if 'ParticipantID' not in df.columns:
+        df['ParticipantID'] = 'P0'
+    valid = df[rt_col].between(min_rt, max_rt)
+    df['LogRT'] = np.where(valid, np.log(df[rt_col]), np.nan)
+    stats = df.groupby('ParticipantID')['LogRT'].agg(rt_mean='mean', rt_std='std')
+    df = df.join(stats, on='ParticipantID')
+    df['ZLogRT'] = (df['LogRT'] - df['rt_mean']) / df['rt_std']
+    df.loc[df['rt_std'].isna() | (df['rt_std'] == 0), 'ZLogRT'] = 0.0
+    df.loc[df['LogRT'].isna(), 'ZLogRT'] = np.nan
+    return df
+
+
+def build_rt_matrix(df, stimuli, z_col='ZLogRT'):
+    matrix = pd.DataFrame(np.nan, index=stimuli, columns=stimuli)
+    if df.empty or not stimuli:
+        return matrix
+    valid = df[['StimulusA', 'StimulusB', z_col]].dropna()
+    if valid.empty:
+        return matrix
+    pair_keys = valid.apply(lambda r: tuple(sorted([r['StimulusA'], r['StimulusB']])), axis=1)
+    valid = valid.assign(Pair=pair_keys)
+    pair_means = valid.groupby('Pair')[z_col].mean()
+    for (a, b), mean_val in pair_means.items():
+        matrix.loc[a, b] = mean_val
+        matrix.loc[b, a] = mean_val
+    return matrix
+
+
+def plot_rt_heatmap(ax, rt_matrix, title, title_y=1.02):
+    mask = rt_matrix.isna()
+    sns.heatmap(
+        rt_matrix,
+        cmap="Greens",
+        ax=ax,
+        square=True,
+        mask=mask,
+        annot=True,
+        fmt=".2f",
+        annot_kws={'fontsize': 12},
+        cbar_kws={'label': 'Z-Log-RT', 'pad': 0.02},
+        linewidths=0.5,
+        linecolor='white'
+    )
+    ax.set_aspect('equal')
+    ax.set_box_aspect(1)
+    ax.set_title(title, fontsize=20, fontweight='bold', y=title_y)
+    ax.set_xlabel("Stimulus", fontsize=plt.rcParams['axes.labelsize'], fontweight='bold', labelpad=8)
+    ax.set_ylabel("Stimulus", fontsize=plt.rcParams['axes.labelsize'], fontweight='bold', labelpad=8)
+
+    current_x = [item.get_text() for item in ax.get_xticklabels()]
+    current_y = [item.get_text() for item in ax.get_yticklabels()]
+    
+    ax.set_xticklabels([format_method_name(label) for label in current_x], rotation=0, ha='center', va='top')
+    ax.set_yticklabels([format_method_name(label) for label in current_y], rotation=0, ha='right', va='center')
+
+    ax.tick_params(axis='both', labelsize=plt.rcParams['xtick.labelsize'])
+
 def fit_bradley_terry_glmm(long_df, methods):
     if BinomialBayesMixedGLM is None:
         raise ImportError("statsmodels is required for Bradley-Terry mixed model. Install statsmodels to proceed.")
@@ -156,8 +217,8 @@ def plot_on_axis(ax, scores, se, cov_scores, y_label):
     })
     sns.barplot(x='Method', y='Score', data=plot_df, hue='Method', palette="Greens", errorbar=None, ax=ax, zorder=2, legend=False)
     ax.errorbar(x=range(len(plot_df)), y=plot_df['Score'], yerr=plot_df['CI'], fmt='none', c='black', capsize=6, elinewidth=1.5, zorder=5, clip_on=False)
-    ax.set_xlabel("Method", fontsize=plt.rcParams['axes.labelsize'], fontweight='bold')
-    ax.set_ylabel(y_label, fontsize=plt.rcParams['axes.labelsize'], fontweight='bold')
+    ax.set_xlabel("Method", fontsize=plt.rcParams['axes.labelsize'], fontweight='bold', labelpad=8)
+    ax.set_ylabel(y_label, fontsize=plt.rcParams['axes.labelsize'], fontweight='bold', labelpad=8)
 
     # Format x-axis labels with subscripts
     current_labels = [item.get_text() for item in ax.get_xticklabels()]
@@ -198,21 +259,29 @@ def plot_on_axis(ax, scores, se, cov_scores, y_label):
     else:
         ax.set_ylim(y_min - span * 0.05, y_max + span * 0.1)
 
-def save_combined_plot(intensity_res, clarity_res, output_path):
-    fig, axes = plt.subplots(1, 2, figsize=(12, 6), sharey=False)
+def save_combined_plot(intensity_res, clarity_res, rt_matrix, output_path):
+    fig, axes = plt.subplots(1, 3, figsize=(22, 7), sharey=False, gridspec_kw={'width_ratios': [1, 1, 1.3]})
+    title_y = 1.02
     
     if intensity_res:
         scores, se, cov_scores = intensity_res
         plot_on_axis(axes[0], scores, se, cov_scores, "Relative Intensity Score (Log-odds ± 95% CI)")
-        axes[0].set_title("Intensity Preference", fontsize=20, fontweight='bold')
+        axes[0].set_title("Intensity Preference", fontsize=20, fontweight='bold', y=title_y)
     
     if clarity_res:
         scores, se, cov_scores = clarity_res
         plot_on_axis(axes[1], scores, se, cov_scores, "Relative Clarity Score (Log-odds ± 95% CI)")
-        axes[1].set_title("Spatial Clarity Preference", fontsize=20, fontweight='bold')
-        
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+        axes[1].set_title("Spatial Clarity Preference", fontsize=20, fontweight='bold', y=title_y)
+
+    if rt_matrix is not None:
+        plot_rt_heatmap(axes[2], rt_matrix, "Decision Time (Z-Log-RT)", title_y=title_y)
+ 
+    fig.align_ylabels(axes[:2])
+    fig.align_xlabels(axes)
+    fig.subplots_adjust(top=0.88, bottom=0.18, wspace=0.25)
+    plt.savefig(f"{output_path}.pdf", dpi=300, bbox_inches='tight')
+    plt.savefig(f"{output_path}.svg", dpi=300, bbox_inches='tight')
+    plt.savefig(f"{output_path}.png", dpi=300, bbox_inches='tight')
     plt.show()
     plt.close()
 
@@ -292,23 +361,29 @@ def main():
         print("No data loaded. Exiting.")
         return
 
+    df_rt = compute_zlog_rt(df)
+    stimuli = pd.unique(df[['StimulusA', 'StimulusB']].values.ravel('K'))
+    stimuli = [s for s in stimuli if pd.notna(s)]
+    stimuli = sorted(stimuli)
+    rt_matrix = build_rt_matrix(df_rt, stimuli)
+
     res_intensity = analyze_block(
-        df, 
-        block_type='Intensity', 
-        winner_col='Chosen_Intensity', 
-        output_dir=output_dir, 
+        df,
+        block_type='Intensity',
+        winner_col='Chosen_Intensity',
+        output_dir=output_dir,
         file_prefix='Intensity'
     )
     
     res_clarity = analyze_block(
-        df, 
-        block_type='Spatial', 
-        winner_col='Chosen_Clarity', 
-        output_dir=output_dir, 
+        df,
+        block_type='Spatial',
+        winner_col='Chosen_Clarity',
+        output_dir=output_dir,
         file_prefix='Clarity'
     )
 
-    save_combined_plot(res_intensity, res_clarity, os.path.join(output_dir, "Combined_Ranking.png"))
+    save_combined_plot(res_intensity, res_clarity, rt_matrix, os.path.join(output_dir, "Experiment 1 Combined"))
 
 if __name__ == "__main__":
     main()
