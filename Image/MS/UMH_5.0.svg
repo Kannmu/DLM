@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="100%" height="100%">
+  <defs>
+    <!-- Seaborn Greens 色板参考:
+         极暗绿 (线条/阴影): #00441b
+         深绿 (中心芯片): #006d2c
+         中绿 (PCB底板): #31a354
+         浅绿 (换能器内网): #bae4b3
+         极浅绿 (换能器外壳): #edf8e9
+    -->
+    <!-- 单个超声波换能器 (Transducer) -->
+    <g id="sensor">
+      <!-- 换能器铝制外壳抽象为极浅绿色的圆 -->
+      <circle cx="0" cy="0" r="8.5" fill="#edf8e9" stroke="#00441b" stroke-width="1.2" />
+      <!-- 换能器内部防尘网抽象为带轻微透明度的浅绿内圆 -->
+      <circle cx="0" cy="0" r="6" fill="#bae4b3" stroke="#00441b" stroke-width="0.8" />
+      <!-- 内部极简纹理表示发声中心 -->
+      <circle cx="0" cy="0" r="2" fill="#74c476" opacity="0.5" />
+    </g>
+    <!-- 固定角螺丝 (Screw) -->
+    <g id="screw">
+      <circle cx="0" cy="0" r="3.5" fill="#74c476" stroke="#00441b" stroke-width="1" />
+      <polygon points="0,-1.5 1.3,-0.75 1.3,0.75 0,1.5 -1.3,0.75 -1.3,-0.75" fill="#00441b" />
+    </g>
+    <!-- 1/6 扇区的换能器阵列 (利用极坐标六边形对称性精简代码) -->
+    <g id="wedge">
+      <!-- 第1圈 -->
+      <use href="#sensor" x="20" y="0" />
+      <!-- 第2圈 -->
+      <use href="#sensor" x="40" y="0" />
+      <use href="#sensor" x="30" y="17.32" />
+      <!-- 第3圈 -->
+      <use href="#sensor" x="60" y="0" />
+      <use href="#sensor" x="50" y="17.32" />
+      <use href="#sensor" x="40" y="34.64" />
+      <!-- 第4圈 -->
+      <use href="#sensor" x="80" y="0" />
+      <use href="#sensor" x="70" y="17.32" />
+      <use href="#sensor" x="60" y="34.64" />
+      <use href="#sensor" x="50" y="51.96" />
+      <!-- 第5圈 (最外圈) -->
+      <use href="#sensor" x="100" y="0" />
+      <use href="#sensor" x="90" y="17.32" />
+      <use href="#sensor" x="80" y="34.64" />
+      <use href="#sensor" x="70" y="51.96" />
+      <use href="#sensor" x="60" y="69.28" />
+    </g>
+  </defs>
+  <!-- 整体居中变换 -->
+  <g transform="translate(150, 150)">
+    <!-- 1. PCB 主板 (正六边形) -->
+    <!-- 半径 R=118 的正六边形，倒圆角 -->
+    <polygon points="118,0 59,102.19 -59,102.19 -118,0 -59,-102.19 59,-102.19" 
+             fill="#31a354" stroke="#00441b" stroke-width="2" stroke-linejoin="round" />
+    <!-- 2. 板载固定螺丝 (位于PCB的6个顶点附近) -->
+    <use href="#screw" x="108" y="0" />
+    <use href="#screw" x="54" y="93.53" />
+    <use href="#screw" x="-54" y="93.53" />
+    <use href="#screw" x="-108" y="0" />
+    <use href="#screw" x="-54" y="-93.53" />
+    <use href="#screw" x="54" y="-93.53" />
+    <!-- 3. 超声波换能器阵列 (通过旋转复制1/6扇区生成完美的 90 个阵列圆) -->
+    <use href="#wedge" transform="rotate(0)" />
+    <use href="#wedge" transform="rotate(60)" />
+    <use href="#wedge" transform="rotate(120)" />
+    <use href="#wedge" transform="rotate(180)" />
+    <use href="#wedge" transform="rotate(240)" />
+    <use href="#wedge" transform="rotate(300)" />
+    <!-- 4. 中心位置的传感器/芯片 (替换了原本第0圈的换能器) -->
+    <g id="center-chip">
+      <rect x="-9" y="-9" width="18" height="18" rx="2" fill="#006d2c" stroke="#00441b" stroke-width="1.2" />
+      <circle cx="0" cy="0" r="4.5" fill="#00441b" />
+      <rect x="-2" y="-2" width="4" height="4" fill="#74c476" />
+    </g>
+  </g>
+</svg>
