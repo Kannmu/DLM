@@ -347,7 +347,7 @@ def analyze_block(df, block_type, winner_col, output_dir, file_prefix):
     return scores, se, cov_scores
 
 def main():
-    base_dir = r"d:\Data\OneDrive\Papers\SWIM\Codes\Pilot Experiment"
+    base_dir = r"d:\Data\OneDrive\Papers\SWIM\Codes\Experiment 1"
     data_dir = os.path.join(base_dir, "Data")
     output_dir = os.path.join(base_dir, "Analysis")
     

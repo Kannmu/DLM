@@ -68,7 +68,6 @@ Title: `Spatiotemporal Interference of Cutaneous Shear Waves Dictates Tactile Pe
   - **强度模块（Intensity Block）**：“刚才的两个刺激，哪一个的力度/压力更强？A还是B？”
   - **精度模块（Spatial Precision Block）**：“刚才的两个刺激，哪一个的触觉面积更小、更像是一个清晰的点？A还是B？”
 
-
 #### 实验1参数设置
 
 所有参数均由刺激频率200Hz、皮肤表面波传播波速以5m/s计算。
