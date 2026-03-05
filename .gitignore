@@ -3,3 +3,9 @@
 *.exe
 *build/ 
 Reference
+*.aux
+*.out
+*.blg
+*.bbl
+*.synctex.gz
+*.log
