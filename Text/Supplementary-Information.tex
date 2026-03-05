@@ -69,12 +69,35 @@
 
 \SupplementarySection{Ultrasound mid-air haptic device details}
 
-\begin{figure}
+
+\begin{figure}[htbp]
     \centering
-    \includegraphics[width= \textwidth]{Figure_Transducer_Driver_Circuit.pdf}
-    \caption{}
+    \includegraphics[width=\textwidth]{Figure_UMH_Device.pdf}
+    \caption{\textbf{Overview of the custom-built Ultrasound Mid-Air Haptic (UMH) device.} \textbf{a}, Isometric view of the assembled device showing the compact hexagonal form factor. \textbf{b}, Top view of the acoustic aperture consisting of 60 ultrasonic transducers arranged in a hexagonal close-packed lattice with a central cutout for a CMOS sensor. \textbf{c}, Bottom view of the main control PCB, housing the STM32H750 microcontroller, USB-C data interface, and power management circuits. \textbf{d}, Side profile showing the USB-C data and debugging interfaces. \textbf{e}, Side profile showing the 12V DC power input jack. \textbf{f}, Bottom view of the transducer driver board. \textbf{g}, Detailed view of the driver circuitry for individual channels, highlighting the IX4428MTR driver ICs, TVS protection diodes, and status LEDs.}
+    \label{fig:supplementary_figure_umh_device}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figure_Transducer_Driver_Circuit.pdf}
+    \caption{\textbf{Schematic of the single-channel ultrasonic transducer driver circuit.} The digital control signal (SIG) is buffered and inverted by the IX4428MTR driver IC to generate complementary outputs (OUTA and OUTB). This bipolar drive topology applies a \qty{24}{\volt} peak-to-peak square wave across the piezoelectric transducer (GU1007C-40TR) from a single \qty{12}{\volt} supply, maximizing acoustic emission. The circuit includes ESD protection and a visual status indicator.}
     \label{fig:supplementary_figure_transducer_driver_circuit}
 \end{figure}
+
+
+The experimental platform utilized in this study is a custom-developed, high-energy-density Ultrasound Mid-Air Haptic (UMH) device (Figure \ref{fig:supplementary_figure_umh_device}a). The system integrates a phased array of ultrasonic transducers, multi-channel driving circuitry, and a central processing unit into a compact hexagonal prism form factor with dimensions of \qtyproduct{102.2 x 90 x 32.2}{\milli\meter}.
+
+\subsection*{Transducer Array Configuration}
+The acoustic aperture comprises 60 airborne ultrasonic transducers (GU1007C-40TR, Dongguan Ninghai Electronics Co., Ltd.) arranged in a hexagonal close-packed (HCP) lattice. The transducers have a diameter of \qty{10}{\milli\meter} and are spaced with a center-to-center pitch of \qty{10}{\milli\meter}, maximizing the fill factor for efficient acoustic power generation. A central aperture is reserved within the array to accommodate a CMOS image sensor for future visual tracking integration (Figure \ref{fig:supplementary_figure_umh_device}b). Each transducer operates at a center frequency of \qty{40}{\kilo\hertz} with a directivity of approximately \ang{80}.
+
+\subsection*{Electronic Control Architecture}
+The device is powered by a \qty{12}{\volt} DC input, which is regulated to provide \qty{3.3}{\volt} and \qty{5.0}{\volt} rails for logic and analog subsystems. The core control unit is an STM32H750VBT6 microcontroller (STMicroelectronics) based on the ARM Cortex-M7 core. The MCU handles communication with the host PC via a USB Type-C interface using the CDC virtual serial port protocol.
+
+\subsection*{Signal Generation and Amplification}
+To achieve precise phase control for beamforming, the system employs a Direct Memory Access (DMA) based signal generation mechanism. The MCU's timer triggers DMA transfers at a sampling frequency of \qty{4}{\mega\hertz}, updating the output state of the GPIO ports. For the \qty{40}{\kilo\hertz} carrier wave, each acoustic cycle is discretized into 100 time slices, providing a phase resolution of $2\pi/100$ (temporal resolution of \qty{250}{\nano\second}).
+
+The amplification stage utilizes a bipolar drive topology to maximize the acoustic pressure output from the available \qty{12}{\volt} supply. As illustrated in the schematic (Figure \ref{fig:supplementary_figure_transducer_driver_circuit}), the logic-level signal (SIG) is fed into a dual-channel low-side MOSFET driver (IX4428MTR, IXYS Integrated Circuits Division). The driver is configured to output two complementary square waves (OUTA and OUTB) to the transducer terminals. This push-pull configuration effectively doubles the voltage swing across the piezoelectric element to \qty{24}{\volt} peak-to-peak (Vpp). Each channel is equipped with a transient voltage suppressor (TVS) diode (ESD5451N) for electrostatic discharge protection and a status LED for visual monitoring of channel activity (Figure \ref{fig:supplementary_figure_umh_device}g).
+
 
 
 
@@ -107,8 +130,8 @@ where $S_0 = \qty{100}{\pascal}$ is the peak stress amplitude, and $\sigma = \qt
     \item \textbf{DLM-2 (Discrete Lateral Modulation - 2 Points):} The focus alternates between two discrete points on a circle of radius $R=\qty{6.25}{\milli\meter}$. This radius ensures the wave propagation time between the two points (distance $2R$) equals half the modulation period ($T/2$), satisfying $2R = c_s \cdot (T/2)$.
     \item \textbf{DLM-3 (Discrete Lateral Modulation - 3 Points):} The focus alternates among three discrete points on a circle of radius $R=\qty{4.81}{\milli\meter}$. This radius ensures the wave propagation time between adjacent points (distance $\sqrt{3}R$) equals one-third of the modulation period ($T/3$), satisfying $\sqrt{3}R = c_s \cdot (T/3)$.
     \item \textbf{ULM-L (Uniform Lateral Modulation - Line):} The focus scans linearly in one direction along a path of length $L=\qty{25}{\milli\meter}$. This length was derived by matching the scanning speed to the shear wave speed, such that $L = c_s \cdot T$.
-    \item \textbf{LM-L (Lateral Modulation - Line):} The focus scans back and forth linearly along a path of length $L=\qty{12.5}{\milli\meter}$. This length was set so that the average scanning speed (covering distance $2L$ in one period) matches the shear wave speed, satisfying $2L = c_s \cdot T$.
-    \item \textbf{LM-C (Lateral Modulation - Circle):} The focus moves continuously along a circular path of radius $R=\qty{3.98}{\milli\meter}$. This radius was determined by matching the circumferential scanning speed to the shear wave speed, satisfying $2\pi R = c_s \cdot T$.
+    \item \textbf{LM-L (Lateral Modulation - Line)~\citep{takahashiTactileStimulationRepetitive2020}:} The focus scans back and forth linearly along a path of length $L=\qty{12.5}{\milli\meter}$. This length was set so that the average scanning speed (covering distance $2L$ in one period) matches the shear wave speed, satisfying $2L = c_s \cdot T$.
+    \item \textbf{LM-C (Lateral Modulation - Circle)~\citep{takahashiTactileStimulationRepetitive2020}:} The focus moves continuously along a circular path of radius $R=\qty{3.98}{\milli\meter}$. This radius was determined by matching the circumferential scanning speed to the shear wave speed, satisfying $2\pi R = c_s \cdot T$.
 \end{enumerate}
 
 Simulation output was recorded at a depth of \qty{1}{\milli\meter} below the surface. We analyzed the stress tensor components ($\tau_{xy}, \tau_{xz}, \tau_{yz}$) to evaluate tactile sensation intensity and spatial distribution. Key metrics included:

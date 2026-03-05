@@ -45,7 +45,7 @@ Nature/Science 旗下的所有适合的子刊。
 
 ### 超声触觉设备 UMH Device 信息
 
-以下是 UMH 设备的详细结构化描述。
+我们研究开发了一种高能量密度，小尺寸的集成式超声触觉设备 UMH Device（Ultrasound Mid-Air Haptic Device），本研究中所进行的超声触觉实验均是在这台设备的基础上进行的。以下是 UMH 设备的详细结构化描述。
 
 #### 1. 设备物理与形态规格
 

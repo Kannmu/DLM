@@ -1,4 +1,4 @@
-\begin{thebibliography}{}
+\begin{thebibliography}{1}
 \expandafter\ifx\csname url\endcsname\relax
   \def\url#1{\burl{#1}}\fi
 \expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
@@ -6,5 +6,10 @@
 \providecommand{\eprint}[2][]{\url{#2}}
 \providecommand{\doi}[1]{\url{https://doi.org/#1}}
 \bibcommenthead
+
+\bibitem{takahashiTactileStimulationRepetitive2020}
+\bibinfo{author}{Takahashi, R.}, \bibinfo{author}{Hasegawa, K.} \& \bibinfo{author}{Shinoda, H.}
+\newblock \bibinfo{title}{Tactile stimulation by repetitive lateral movement of midair ultrasound focus}.
+\newblock \emph{\bibinfo{journal}{IEEE Transactions on Haptics}}  (\bibinfo{year}{2020}).
 
 \end{thebibliography}
