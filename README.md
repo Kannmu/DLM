@@ -8,6 +8,10 @@ Title: `Spatiotemporal Interference of Cutaneous Shear Waves Dictates Tactile Pe
 
 ### 目标期刊
 
+Nature/Science 旗下的所有适合的子刊。
+
+### 论文叙事线
+
 
 
 ## 背景信息
@@ -30,7 +34,7 @@ Title: `Spatiotemporal Interference of Cutaneous Shear Waves Dictates Tactile Pe
 
 - 两点DLM（DLM_2）：当我切换聚焦点的时机足够恰好时，在第一个聚焦点A戳下去，等产生的皮肤表面传播的剪切波刚好传播到B处时，再切换焦点到B点。这样会在B点形成一个很大的压力或者剪切梯度，从而更高效的激活皮肤触觉受体，产生明显的触觉感知。
 
-- 三点DLM（DLM_3）：当离散的聚焦点个数增加到3个及以上时，控制焦点分布的半径，使得每个焦点产生的表面波会在圆心处产生一个旋转变化的剪切应变/应力，这个旋转剪切量旋转的频率正好是调制整体调制频率（200Hz），从而同样可以激活皮肤中对剪切敏感的触觉受体）。
+- 三点DLM（DLM_3）：当离散的聚焦点个数增加到3个及以上时，在DLM_2的基础上，每个焦点产生的表面波还会在圆心处产生一个旋转变化的剪切应变/应力，这个旋转剪切量旋转的频率正好是调制整体调制频率（200Hz），从而同样可以激活皮肤中对剪切敏感的触觉受体）。
 
 - ULM_L：ULM_L 调制方式的每个周期内，焦点会单向的直线从A点移动到B点移动，焦点移动速度匹配皮肤表面剪切波波速，从而实现对波前的持续压缩。
 
@@ -288,11 +292,11 @@ Title: `Spatiotemporal Interference of Cutaneous Shear Waves Dictates Tactile Pe
 **3. 调制方式 (Modulation Methods)**
 仿真对比了以下五种不同的焦点扫描/调制策略：
 
-1. **DLM_2 (Discrete Linear Modulation - 2 Points)**: 焦点在圆周上2个离散点间切换，半径 $6.25$ mm。
-2. **DLM_3 (Discrete Linear Modulation - 3 Points)**: 焦点在圆周上3个离散点间切换，半径 $4.81$ mm。
-3. **ULM_L (Uniform Linear Modulation - Line)**: 焦点沿直线单向匀速扫描，长度 $25$ mm。
-4. **LM_L (Linear Modulation - Line)**: 焦点沿直线双向往复扫描，长度 $12.5$ mm。
-5. **LM_C (Linear Modulation - Circle)**: 焦点沿圆周连续匀速扫描，半径 $3.98$ mm。
+1. **DLM_2 (Discrete Lateral Modulation - 2 Points)**: 焦点在圆周上2个离散点间切换，半径 $6.25$ mm。
+2. **DLM_3 (Discrete Lateral Modulation - 3 Points)**: 焦点在圆周上3个离散点间切换，半径 $4.81$ mm。
+3. **ULM_L (Uniform Lateral Modulation - Line)**: 焦点沿直线单向匀速扫描，长度 $25$ mm。
+4. **LM_L (Lateral Modulation - Line)**: 焦点沿直线双向往复扫描，长度 $12.5$ mm。
+5. **LM_C (Lateral Modulation - Circle)**: 焦点沿圆周连续匀速扫描，半径 $3.98$ mm。
 
 **4. 数据采集与分析**
 
@@ -314,5 +318,8 @@ Title: `Spatiotemporal Interference of Cutaneous Shear Waves Dictates Tactile Pe
 
 
 #### 仿真1结果
+
+
+
 
 
