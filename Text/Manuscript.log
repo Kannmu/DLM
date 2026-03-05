@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex 2025.6.10)  28 FEB 2026 16:23
+This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025) (preloaded format=xelatex 2025.6.10)  5 MAR 2026 13:26
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -755,22 +755,28 @@ LaTeX Font Warning: Font shape `U/rsfs/m/n' in size <5.52061> not available
 (Font)              size <6> substituted on input line 52.
 
 LaTeX Font Info:    Calculating math sizes for size <10.03749> on input line 52.
-File: ../Image/MS/Graph/Experiment 1 Combined.pdf Graphic file (type pdf)
-<use ../Image/MS/Graph/Experiment 1 Combined.pdf>
-No file Manuscript.bbl.
-
+File: ../Image/MS/Figure_Exp_1.pdf Graphic file (type pdf)
+<use ../Image/MS/Figure_Exp_1.pdf>
+File: ../Image/MS/Figure_Sim_1.pdf Graphic file (type pdf)
+<use ../Image/MS/Figure_Sim_1.pdf>
+(./Manuscript.bbl
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [1
 
-]
+])
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [2] (./Manuscript.aux)
+ [2]
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [3] (./Manuscript.aux)
  ***********
 LaTeX2e <2025-06-01>
 L3 programming layer <2025-05-26>
@@ -784,12 +790,12 @@ Package rerunfilecheck Info: File `Manuscript.out' has not changed.
 (rerunfilecheck)             Checksum: 003F117A5D0437C975D1832CC8158E64;348.
  ) 
 Here is how much of TeX's memory you used:
- 17790 strings out of 468527
- 336420 string characters out of 5447246
- 709853 words of memory out of 5000000
- 45911 multiletter control sequences out of 15000+600000
- 642436 words of font info for 115 fonts, out of 8000000 for 9000
+ 17824 strings out of 468527
+ 337158 string characters out of 5447246
+ 712834 words of memory out of 5000000
+ 45939 multiletter control sequences out of 15000+600000
+ 642444 words of font info for 116 fonts, out of 8000000 for 9000
  1358 hyphenation exceptions out of 8191
- 87i,7n,93p,543b,926s stack positions out of 10000i,1000n,20000p,400000b,200000s
+ 87i,7n,93p,543b,1071s stack positions out of 10000i,1000n,20000p,400000b,200000s
 
-Output written on Manuscript.pdf (2 pages).
+Output written on Manuscript.pdf (3 pages).

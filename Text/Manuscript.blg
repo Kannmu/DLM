@@ -1,0 +1,47 @@
+This is BibTeX, Version 0.99d (TeX Live 2025)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: Manuscript.aux
+The style file: sn-nature.bst
+Database file #1: SWIM.bib
+sn-nature.bst [2024/07/19 v1.1 bibliography style]
+You've used 2 entries,
+            2732 wiz_defined-function locations,
+            1056 strings with 9876 characters,
+and the built_in function-call counts, 674 in all, are:
+= -- 37
+> -- 28
+< -- 0
++ -- 14
+- -- 7
+* -- 81
+:= -- 84
+add.period$ -- 6
+call.type$ -- 2
+change.case$ -- 2
+chr.to.int$ -- 0
+cite$ -- 2
+duplicate$ -- 62
+empty$ -- 52
+format.name$ -- 9
+if$ -- 123
+int.to.chr$ -- 0
+int.to.str$ -- 2
+missing$ -- 15
+newline$ -- 20
+num.names$ -- 2
+pop$ -- 19
+preamble$ -- 1
+purify$ -- 0
+quote$ -- 0
+skip$ -- 11
+stack$ -- 0
+substring$ -- 0
+swap$ -- 60
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 1
+type$ -- 0
+warning$ -- 0
+while$ -- 2
+width$ -- 3
+write$ -- 29
