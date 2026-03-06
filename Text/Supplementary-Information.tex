@@ -17,9 +17,14 @@
 \usepackage{algpseudocode}%
 \usepackage{listings}%
 \usepackage{siunitx}
+\usepackage{cleveref}
 %%%%
 
 \graphicspath{{../Image/SI/}}
+
+\crefname{figure}{Supplementary Figure}{Supplementary Figures}
+\crefname{table}{Supplementary Table}{Supplementary Tables}
+\crefname{section}{Supplementary Note}{Supplementary Notes}
 
 
 \theoremstyle{thmstyleone}%
@@ -85,10 +90,10 @@
 \end{figure}
 
 
-The experimental platform utilized in this study is a custom-developed, high-energy-density Ultrasound Mid-Air Haptic (UMH) device (Figure \ref{fig:supplementary_figure_umh_device}a). The system integrates a phased array of ultrasonic transducers, multi-channel driving circuitry, and a central processing unit into a compact hexagonal prism form factor with dimensions of \qtyproduct{102.2 x 90 x 32.2}{\milli\meter}.
+The experimental platform utilized in this study is a custom-developed, high-energy-density Ultrasound Mid-Air Haptic (UMH) device (\cref{fig:supplementary_figure_umh_device}a). The system integrates a phased array of ultrasonic transducers, multi-channel driving circuitry, and a central processing unit into a compact hexagonal prism form factor with dimensions of \qtyproduct{102.2 x 90 x 32.2}{\milli\meter}.
 
 \subsection*{Transducer Array Configuration}
-The acoustic aperture comprises 60 airborne ultrasonic transducers (GU1007C-40TR, Dongguan Ninghai Electronics Co., Ltd.) arranged in a hexagonal close-packed (HCP) lattice. The transducers have a diameter of \qty{10}{\milli\meter} and are spaced with a center-to-center pitch of \qty{10}{\milli\meter}, maximizing the fill factor for efficient acoustic power generation. A central aperture is reserved within the array to accommodate a CMOS image sensor for future visual tracking integration (Figure \ref{fig:supplementary_figure_umh_device}b). Each transducer operates at a center frequency of \qty{40}{\kilo\hertz} with a directivity of approximately \ang{80}.
+The acoustic aperture comprises 60 airborne ultrasonic transducers (GU1007C-40TR, Dongguan Ninghai Electronics Co., Ltd.) arranged in a hexagonal close-packed (HCP) lattice. The transducers have a diameter of \qty{10}{\milli\meter} and are spaced with a center-to-center pitch of \qty{10}{\milli\meter}, maximizing the fill factor for efficient acoustic power generation. A central aperture is reserved within the array to accommodate a CMOS image sensor for future visual tracking integration (\cref{fig:supplementary_figure_umh_device}b). Each transducer operates at a center frequency of \qty{40}{\kilo\hertz} with a directivity of approximately \ang{80}.
 
 \subsection*{Electronic Control Architecture}
 The device is powered by a \qty{12}{\volt} DC input, which is regulated to provide \qty{3.3}{\volt} and \qty{5.0}{\volt} rails for logic and analog subsystems. The core control unit is an STM32H750VBT6 microcontroller (STMicroelectronics) based on the ARM Cortex-M7 core. The MCU handles communication with the host PC via a USB Type-C interface using the CDC virtual serial port protocol.
@@ -96,7 +101,7 @@ The device is powered by a \qty{12}{\volt} DC input, which is regulated to provi
 \subsection*{Signal Generation and Amplification}
 To achieve precise phase control for beamforming, the system employs a Direct Memory Access (DMA) based signal generation mechanism. The MCU's timer triggers DMA transfers at a sampling frequency of \qty{4}{\mega\hertz}, updating the output state of the GPIO ports. For the \qty{40}{\kilo\hertz} carrier wave, each acoustic cycle is discretized into 100 time slices, providing a phase resolution of $2\pi/100$ (temporal resolution of \qty{250}{\nano\second}).
 
-The amplification stage utilizes a bipolar drive topology to maximize the acoustic pressure output from the available \qty{12}{\volt} supply. As illustrated in the schematic (Figure \ref{fig:supplementary_figure_transducer_driver_circuit}), the logic-level signal (SIG) is fed into a dual-channel low-side MOSFET driver (IX4428MTR, IXYS Integrated Circuits Division). The driver is configured to output two complementary square waves (OUTA and OUTB) to the transducer terminals. This push-pull configuration effectively doubles the voltage swing across the piezoelectric element to \qty{24}{\volt} peak-to-peak (Vpp). Each channel is equipped with a transient voltage suppressor (TVS) diode (ESD5451N) for electrostatic discharge protection and a status LED for visual monitoring of channel activity (Figure \ref{fig:supplementary_figure_umh_device}g).
+The amplification stage utilizes a bipolar drive topology to maximize the acoustic pressure output from the available \qty{12}{\volt} supply. As illustrated in the schematic (\cref{fig:supplementary_figure_transducer_driver_circuit}), the logic-level signal (SIG) is fed into a dual-channel low-side MOSFET driver (IX4428MTR, IXYS Integrated Circuits Division). The driver is configured to output two complementary square waves (OUTA and OUTB) to the transducer terminals. This push-pull configuration effectively doubles the voltage swing across the piezoelectric element to \qty{24}{\volt} peak-to-peak (Vpp). Each channel is equipped with a transient voltage suppressor (TVS) diode (ESD5451N) for electrostatic discharge protection and a status LED for visual monitoring of channel activity (\cref{fig:supplementary_figure_umh_device}g).
 
 
 
@@ -124,33 +129,49 @@ The tactile stimulus was modeled as a vertical stress source $S_{zz}$ at the ski
     S_{zz}(x, y, t) = A(t) \cdot S_0 \cdot \exp\left(-\frac{(x - x_f(t))^2 + (y - y_f(t))^2}{2\sigma^2}\right)
 \end{equation}
 
-where $S_0 = \qty{100}{\pascal}$ is the peak stress amplitude, and $\sigma = \qty{4.25}{\milli\meter}$ defines the spatial width of the focal point. The temporal modulation $A(t)$ was a continuous \qty{200}{\hertz} sine wave with a duration of \qty{100}{\milli\second} (20 cycles). The focal point trajectory $(x_f(t), y_f(t))$ varied according to the five modulation methods. Geometric parameters for these trajectories were calculated based on the skin shear wave speed ($c_s = \qty{5.0}{\meter\per\second}$) and the modulation frequency ($f = \qty{200}{\hertz}$, period $T = \qty{5}{\milli\second}$), ensuring that focal point movement or switching matched natural wave propagation characteristics:
+where $S_0 = \qty{100}{\pascal}$ is the peak stress amplitude, and $\sigma = \qty{4.25}{\milli\meter}$ defines the spatial width of the focal point. The temporal modulation $A(t)$ was a continuous \qty{200}{\hertz} sine wave with a duration of \qty{75}{\milli\second} (15 cycles). The focal point trajectory $(x_f(t), y_f(t))$ varied according to the five modulation methods. Geometric parameters for these trajectories were determined based on the modulation frequency ($f = \qty{200}{\hertz}$, period $T = \qty{5}{\milli\second}$) and the skin shear wave speed ($c_s = \qty{5.0}{\meter\per\second}$), ensuring that focal point movement or switching generally matched natural wave propagation characteristics:
 
 \begin{enumerate}
     \item \textbf{DLM-2 (Discrete Lateral Modulation - 2 Points):} The focus alternates between two discrete points on a circle of radius $R=\qty{6.25}{\milli\meter}$. This radius ensures the wave propagation time between the two points (distance $2R$) equals half the modulation period ($T/2$), satisfying $2R = c_s \cdot (T/2)$.
     \item \textbf{DLM-3 (Discrete Lateral Modulation - 3 Points):} The focus alternates among three discrete points on a circle of radius $R=\qty{4.81}{\milli\meter}$. This radius ensures the wave propagation time between adjacent points (distance $\sqrt{3}R$) equals one-third of the modulation period ($T/3$), satisfying $\sqrt{3}R = c_s \cdot (T/3)$.
-    \item \textbf{ULM-L (Uniform Lateral Modulation - Line):} The focus scans linearly in one direction along a path of length $L=\qty{25}{\milli\meter}$. This length was derived by matching the scanning speed to the shear wave speed, such that $L = c_s \cdot T$.
-    \item \textbf{LM-L (Lateral Modulation - Line)~\citep{takahashiTactileStimulationRepetitive2020}:} The focus scans back and forth linearly along a path of length $L=\qty{12.5}{\milli\meter}$. This length was set so that the average scanning speed (covering distance $2L$ in one period) matches the shear wave speed, satisfying $2L = c_s \cdot T$.
-    \item \textbf{LM-C (Lateral Modulation - Circle)~\citep{takahashiTactileStimulationRepetitive2020}:} The focus moves continuously along a circular path of radius $R=\qty{3.98}{\milli\meter}$. This radius was determined by matching the circumferential scanning speed to the shear wave speed, satisfying $2\pi R = c_s \cdot T$.
+    \item \textbf{ULM-L (Uniform Lateral Modulation - Line):} The focus scans linearly in one direction along a path of length $L=\qty{30}{\milli\meter}$. This corresponds to a scanning speed of $v = \qty{6.0}{\meter\per\second}$, slightly higher than the shear wave speed.
+    \item \textbf{LM-L (Lateral Modulation - Line)~\citep{takahashiTactileStimulationRepetitive2020}:} The focus scans back and forth linearly along a path of length $L=\qty{15}{\milli\meter}$. This corresponds to an average scanning speed of $v = \qty{6.0}{\meter\per\second}$ (covering distance $2L$ in one period).
+    \item \textbf{LM-C (Lateral Modulation - Circle)~\citep{takahashiTactileStimulationRepetitive2020}:} The focus moves continuously along a circular path of radius $R=\qty{4.77}{\milli\meter}$. This corresponds to a circumferential scanning speed of approximately $v = \qty{6.0}{\meter\per\second}$.
 \end{enumerate}
 
 Simulation output was recorded at a depth of \qty{1}{\milli\meter} below the surface. We analyzed the stress tensor components ($\tau_{xy}, \tau_{xz}, \tau_{yz}$) to evaluate tactile sensation intensity and spatial distribution. Key metrics included:
 
 \begin{itemize}
-    \item \textbf{RMS Stress Map:} The root-mean-square value of the stress magnitude over the steady-state period, representing the average energy distribution.
+    \item \textbf{RMS Stress Map:} The root-mean-square value of the stress magnitude over the last cycle of the steady-state period, representing the average energy distribution.
     \item \textbf{Peak Stress Map:} The maximum instantaneous stress magnitude recorded during the simulation.
     \item \textbf{Maximum Stress Rate Map:} The maximum time derivative of the stress magnitude ($\max |\partial |\boldsymbol{\tau}| / \partial t|$), indicating the dynamic intensity of the tactile stimulus.
-    \item \textbf{Spatial Gradient:} The magnitude of the spatial gradient of the stress field, providing cues for spatial resolution.
+    \item \textbf{Spatial Gradient:} The magnitude of the spatial gradient of the stress field at the final time step, providing cues for spatial resolution.
 \end{itemize}
+
+To ensure fair comparison between different modulation methods and accurate presentation of wavefield characteristics, the following key processing methods were adopted:
+\begin{itemize}
+    \item \textbf{Global Normalization:} A unified color scale range (based on the global maximum across all groups) was applied to the same physical quantities (e.g., RMS stress, peak stress) for all comparison groups (five modulation methods) to intuitively reflect relative intensity differences.
+    \item \textbf{Spectrum Analysis Preprocessing:} Before plotting the spectrum of the center point waveform, the time-domain signal (length $L$) was first demeaned to eliminate the DC component. A Hann window was then applied to suppress spectral leakage. To improve spectral resolution, the signal was zero-padded to a length of $N_{FFT} = 2^{\lceil \log_2(8L) \rceil}$ before performing the Fast Fourier Transform (FFT). The result was converted to a single-sided spectrum in dB scale for display.
+    \item \textbf{XT-Diagram Enhancement:} When plotting spatiotemporal slices, the time-domain signal at each spatial point was processed by subtracting its temporal mean (background stress removal), thereby highlighting the propagation trajectories of dynamic fluctuations and interference fringes.
+    \item \textbf{Wavefront Snapshots:} Instantaneous wavefields at four phase points ($T/4, T/2, 3T/4, T$) within the first cycle were extracted. Each snapshot was spatially demeaned to center the colormap, highlighting the positive and negative polarity (compression/extension) of the fluctuations using a diverging colormap (RdBu\_r).
+    \item \textbf{Focusing Performance Evaluation:} The peak stress distribution curve on the focal plane was extracted and normalized to its maximum value. The Full Width at Half Maximum (FWHM) was calculated by identifying the spatial width where the normalized intensity exceeds 0.5, serving as a quantitative indicator of spatial focusing resolution.
+\end{itemize}
+
+\cref{fig:supplementary_figure_sim_1_full_spatial} and \cref{fig:supplementary_figure_sim_1_full_temporal} present the comprehensive simulation results for the five modulation schemes. \cref{fig:supplementary_figure_sim_1_full_spatial} visualizes the spatial distribution of the key stress metrics, allowing for a direct comparison of the stimulated area and intensity patterns. \cref{fig:supplementary_figure_sim_1_full_temporal} details the temporal evolution of the wavefields, illustrating the dynamic propagation characteristics and the resulting waveforms at the focal center.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width= \textwidth]{Figure_Sim_1_Full.png}
-    \caption{\textbf{Simulation results for different modulation strategies.}}
-    \label{fig:supplementary_figure_sim_1_full}
+    \includegraphics[width= \textwidth]{Figure_Sim_1_Full_Spatial.png}
+    \caption{\textbf{Spatial distribution of stress metrics for different modulation schemes.} The rows correspond to the five modulation methods: DLM-2, DLM-3, LM-C, LM-L, and ULM-L. The columns display, from left to right: (1) \textbf{RMS Shear Stress}: The root-mean-square magnitude of the shear stress, indicating the time-averaged energy distribution. (2) \textbf{Peak Shear Stress}: The maximum instantaneous stress magnitude recorded. (3) \textbf{Max Rate of Change}: The maximum time derivative of the stress ($\max |d\boldsymbol{\tau}/dt|$), representing the dynamic impact intensity. (4) \textbf{Stress Gradient Snapshot}: A snapshot of the spatial stress gradient magnitude ($|\nabla \boldsymbol{\tau}|$), reflecting the spatial sharpness of the stimulus. All metrics are evaluated at a depth of \qty{1}{\milli\meter}.}
+    \label{fig:supplementary_figure_sim_1_full_spatial}
 \end{figure}
 
-
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width= \textwidth]{Figure_Sim_1_Full_Tempo.png}
+    \caption{\textbf{Temporal evolution and wavefront dynamics.} The rows represent the modulation schemes: DLM-2, DLM-3, LM-C, LM-L, and ULM-L. The columns show: (1) \textbf{Signed XT Diagram ($\tau_{xz}$)}: Space-time plot of the shear stress component $\tau_{xz}$ along the x-axis, illustrating the wave propagation direction and interference patterns. (2) \textbf{Center Waveform}: Time history of the stress magnitude at the focal center, showing the temporal modulation envelope. (3) \textbf{Wavefront Snapshots ($\tau_{xy}$)}: Instantaneous spatial distributions of shear stress $\tau_{xy}$ at four phases ($t=T/4, T/2, 3T/4, T$) within a modulation cycle. (4) \textbf{Wavefront Snapshots ($u_z$)}: Corresponding snapshots of the vertical displacement velocity, highlighting the primary wave propagation.}
+    \label{fig:supplementary_figure_sim_1_full_temporal}
+\end{figure}
 
 
 
