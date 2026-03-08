@@ -54,7 +54,7 @@
 
 \begin{document}
 
-\title[]{Supplementary Information for: SWIM(Title undefined for now)}
+\title[]{Supplementary Information for: Spatiotemporal Interference of Cutaneous Shear Waves Dictates Tactile Perception in Ultrasonic Haptics}
 
 \author[1]{\fnm{Linhan} \sur{Fan}}\email{linhanfan@seu.edu.cn}
 
@@ -67,7 +67,20 @@
 \maketitle
 
 
+\SupplementarySection{Background of the ultrasound phased array}
+
+
+
+
+
+
+
 \SupplementarySection{Background of the ultrasound mid-air haptic}
+
+Ultrasound mid-air haptics (UMH) technology enables the delivery of tactile feedback without physical contact by focusing airborne acoustic waves onto the skin surface~\cite{hoshiIntroductionUltrasonicMidair2022, rakkolainenSurveyMidAirUltrasound2021}. The underlying mechanism is acoustic radiation pressure, a non-linear effect arising from the momentum transfer of the acoustic field to an object~\cite{kingAcousticRadiationPressure1934a}. Given the large acoustic impedance mismatch between air and human skin ($\approx 99.9\%$), the incident ultrasound waves are almost entirely reflected, exerting a net force perpendicular to the skin surface~\cite{hoshiIntroductionUltrasonicMidair2022}. To generate perceptible forces, UMH systems utilize phased arrays of transducers to create constructive interference at specific spatial locations, forming a high-intensity acoustic focus~\cite{rakkolainenSurveyMidAirUltrasound2021, priceFibonacciSpiralArranged2018}.
+
+Since the carrier frequency of these systems (typically \qty{40}{\kHz}) far exceeds the temporal sensitivity of cutaneous mechanoreceptors ($<\qty{1}{\kHz}$)~\cite{johnsonRolesFunctionsCutaneous2001, mountcastleNeuralBasisSense1967}, the acoustic field must be modulated to elicit tactile sensations. Amplitude Modulation (AM) varies the focal intensity at a perceptible frequency (e.g., \qty{200}{\Hz}) to activate Pacinian corpuscles~\cite{hoshiIntroductionUltrasonicMidair2022}. Alternatively, Spatiotemporal Modulation (STM) or Lateral Modulation (LM) rapidly steers the focal point along a trajectory on the skin~\cite{takahashiTactileStimulationRepetitive2020}. This scanning approach distributes the acoustic energy over a larger area and has been shown to generate shear shock waves in the skin, enhancing the perceived intensity and spatial extent of the tactile stimuli~\cite{reardonCutaneousWavePropagation2019, reardonShearShockWaves2023}.
+
 
 
 
@@ -117,9 +130,17 @@ The geometric arrangement of transducers significantly influences the beamformin
 \end{equation}
 where $d=\qty{10}{\milli\meter}$ is the pitch and $q, r$ are integers. This hexagonal arrangement maximizes the surface fill factor. In contrast, the aperiodic spiral arrays utilize the golden angle $\Phi_g = \pi(3-\sqrt{5}) \approx \ang{137.5}$ to suppress grating lobes. The Optimized Fermat Spiral places the $n$-th element at $\theta_n = n \Phi_g$ and radial distance $r_n = c \sqrt{n} (1 + \beta n)$, where the term $(1 + \beta n)$ introduces a radial density taper to reduce side lobes. The Density-Tapered Vogel Spiral is generated using an iterative collision-based packing algorithm, where the exclusion radius for the $n$-th element expands linearly as $d_{req}(n) = d_{min}(1 + \alpha n)$, creating a spatially apodized aperture that transitions from a dense core to a sparse periphery.
 
-The focusing performance was quantified using the Array Performance Index (API)~\cite{priceFibonacciSpiralArranged2018,holmesPostprocessingFullMatrix2005}, a dimensionless metric defined for both the focal area and volume. The area-based API is calculated as $\text{API}_{area} = A_{-6dB} / \lambda^2$, where $A_{-6dB}$ represents the area within the \qty{-6}{\decibel} pressure contour on the focal plane. Similarly, the volume-based API is defined as $\text{API}_{vol} = V_{-6dB} / \lambda^3$, capturing the spatial confinement of the acoustic energy. A lower API value indicates sharper focusing and superior diffraction-limited performance.
+The focusing performance was quantified using the Array Performance Index (API) \cite{priceFibonacciSpiralArranged2018, holmesPostprocessingFullMatrix2005}, a dimensionless metric defined for both the focal area and volume. The area-based API is calculated as $\text{API}_{area} = A_{-6dB} / \lambda^2$, where $A_{-6dB}$ represents the area within the \qty{-6}{\decibel} pressure contour on the focal plane. Similarly, the volume-based API is defined as $\text{API}_{vol} = V_{-6dB} / \lambda^3$, capturing the spatial confinement of the acoustic energy. A lower API value indicates sharper focusing and superior diffraction-limited performance.
 
 As illustrated in \cref{fig:supplementary_figure_transducer_array_arrangement_focus_simulation_results}, the spiral configurations demonstrate superior focusing characteristics with significantly lower API values ($\text{API}_{area} \approx 1.65-1.89$) and suppressed grating lobes compared to the periodic arrays. However, their sparse arrangement results in a larger physical footprint and reduced peak pressure output ($\approx \qty{540}{\pascal}$) for the same element count. Conversely, the proposed hexagonal array achieves a high peak pressure of \qty{581}{\pascal} with a compact footprint, leveraging the maximum packing density. Although it exhibits characteristic hexagonal grating lobes and a slightly higher API ($\text{API}_{area} = 2.57$), the focal quality remains sufficient for precise tactile stimulation. Consequently, the hexagonal layout was selected for the current prototype to maximize acoustic power density within a handheld form factor, while the spiral designs provide a validated pathway for future high-fidelity, large-aperture applications.
+
+
+
+\SupplementarySection{Psychophysical experimental details}
+
+
+
+
 
 
 
@@ -187,6 +208,15 @@ To ensure fair comparison between different modulation methods and accurate pres
     \caption{\textbf{Temporal evolution and wavefront dynamics.} The rows represent the modulation schemes: DLM-2, DLM-3, LM-C, LM-L, and ULM-L. The columns show: (1) \textbf{Signed XT Diagram ($\tau_{xz}$)}: Space-time plot of the shear stress component $\tau_{xz}$ along the x-axis, illustrating the wave propagation direction and interference patterns. (2) \textbf{Center Waveform}: Time history of the stress magnitude at the focal center, showing the temporal modulation envelope. (3) \textbf{Wavefront Snapshots ($\tau_{xy}$)}: Instantaneous spatial distributions of shear stress $\tau_{xy}$ at four phases ($t=T/4, T/2, 3T/4, T$) within a modulation cycle. (4) \textbf{Wavefront Snapshots ($u_z$)}: Corresponding snapshots of the vertical displacement velocity, highlighting the primary wave propagation.}
     \label{fig:supplementary_figure_sim_1_full_temporal}
 \end{figure}
+
+
+\SupplementarySection{Computational neural dynamics modeling details}
+
+
+
+
+
+
 
 
 
