@@ -462,80 +462,159 @@ def plot_figure2(data: Dict) -> None:
     ax.set_ylim(-200, 80) # 建议固定Y轴范围，避免数据抖动导致留白过大
     ax.set_xlabel('Frequency [Hz]', fontweight='bold')
     ax.set_ylabel('PSD [dB]', fontweight='bold')
-    ax.set_title('Figure 2 | Frequency Fidelity & Receptor Tuning', fontweight='bold')
+    # ax.set_title('Figure 2 | Frequency Fidelity & Receptor Tuning', fontweight='bold')
     ax.grid(True, linestyle='--', alpha=0.35)
     ax.legend(frameon=True, ncol=1, loc='lower right')
     save_figure(fig, OUTPUT_DIR / 'Figure_Neural_2_Frequency_Fidelity')
 
-
 # =============================================================================
-# Figure 3
+# Figure 3 (Physically Accurate & Visually Continuous)
 # =============================================================================
-
-
 def plot_figure3(data: Dict) -> None:
     population = data['population']
-    fig = plt.figure(figsize=(13, 12))
-    outer = gridspec.GridSpec(3, 2, width_ratios=[1.8, 1.0], wspace=0.05, hspace=0.3)
+    fig = plt.figure(figsize=(13, 14))
+    outer = gridspec.GridSpec(3, 2, width_ratios=[2.2, 1.0], wspace=0.15, hspace=0.4)
+
+    RASTER_COLORS = {
+        'ULM_L': '#440154',
+        'DLM_2': '#3b528b',
+        'LM_L': '#b89500'  
+    }
 
     for row, method in enumerate(RASTER_METHODS):
         method_pop = population[method]
         coords = method_pop['receptor_coords_m']
-        selected = choose_central_neurons(coords, N_RASTER_NEURONS)
-        spikes = method_pop['spikes'][0, selected, :]
-        n_time = spikes.shape[1]
-        dt = 0.015 / n_time
-        t_ms = np.arange(n_time) * dt * 1000.0
-        time_mask = t_ms <= RASTER_DURATION_MS
+        
+        # 1. 沿 Y=0 切线提取神经元
+        y_abs = np.abs(coords[:, 1])
+        y_min = np.min(y_abs)
+        line_idx = np.where(y_abs <= y_min + 1e-5)[0]
+        sorted_line = line_idx[np.argsort(coords[line_idx, 0])]
+        
+        if len(sorted_line) > N_RASTER_NEURONS:
+            start = (len(sorted_line) - N_RASTER_NEURONS) // 2
+            selected = sorted_line[start:start+N_RASTER_NEURONS]
+        else:
+            selected = sorted_line
+            
+        x_mm = coords[selected, 0] * 1000.0  
+        
+        # 2. 提取动态主导分量
+        all_spikes = method_pop['spikes'][:, selected, :] 
+        spike_counts = all_spikes.sum(axis=2)
+        best_comp_idx = np.argmax(spike_counts, axis=0)
+        
+        spikes = np.zeros_like(all_spikes[0])
+        for i in range(len(selected)):
+            spikes[i] = all_spikes[best_comp_idx[i], i, :]
 
+        dt = float(data['kwave']['dt'])
+        n_time = spikes.shape[1]
+        T_max_ms = n_time * dt * 1000.0
+        T_start_ms = T_max_ms - RASTER_DURATION_MS
+
+        # ==========================================
+        # 子图 1：XT-Spacetime Raster Plot
+        # ==========================================
         ax_raster = fig.add_subplot(outer[row, 0])
-        for n_idx, neuron_spikes in enumerate(spikes[:, time_mask], start=1):
-            spike_times = t_ms[time_mask][neuron_spikes.astype(bool)]
-            if spike_times.size:
-                ax_raster.vlines(spike_times, n_idx - 0.38, n_idx + 0.38, color=METHOD_COLORS[method], lw=2)
-        ax_raster.set_xlim(0, RASTER_DURATION_MS)
-        ax_raster.set_ylim(0.5, len(selected) + 0.5)
-        ax_raster.set_ylabel(f'{method} (Neuron #)', fontweight='bold')
+        
+        y_range = float(x_mm.max() - x_mm.min())
+        dy = (y_range / max(1, len(x_mm) - 1)) * 1.05
+            
+        for n_idx in range(len(selected)):
+            spike_idx = np.where(spikes[n_idx])[0]
+            if len(spike_idx) == 0:
+                continue
+                
+            spike_times_full = spike_idx * dt * 1000.0
+            valid = (spike_times_full >= T_start_ms) & (spike_times_full <= T_max_ms)
+            spike_times_win = spike_times_full[valid] - T_start_ms
+            
+            if len(spike_times_win) > 0:
+                y_pos = float(x_mm[n_idx])
+                # 【核心修复 1】将线宽 lw 提升至 6.5，使得脉冲在时间轴(X)上的宽度足以覆盖相邻感受器间的波传播延迟(约0.4ms)
+                # 这会将视觉上的“离散阶梯”无缝融合为“物理上连续的宏观马赫锥波前”
+                ax_raster.vlines(x=spike_times_win, 
+                                 ymin=y_pos - dy/2.0, 
+                                 ymax=y_pos + dy/2.0, 
+                                 color=RASTER_COLORS[method], lw=6.5, alpha=0.9, zorder=3)
+                
+        ax_raster.set_xlim(0, float(RASTER_DURATION_MS))
+        ax_raster.set_ylim(float(x_mm.min() - dy), float(x_mm.max() + dy))
+        
+        # 【核心修复 2】清理冗余的 Y 轴标签，使得左侧更加干净
+        ax_raster.set_ylabel('Position X [mm]', fontweight='bold')
+        
         if row == len(RASTER_METHODS) - 1:
             ax_raster.set_xlabel('Time [ms]', fontweight='bold')
         else:
             ax_raster.tick_params(labelbottom=False)
-        ax_raster.grid(True, linestyle='--', alpha=0.25)
-        ax_raster.set_title(f'{method} | Spike raster', fontweight='bold', loc='left',y=1.02)
+            
+        ax_raster.grid(True, linestyle='--', alpha=0.4, zorder=0)
+        ax_raster.set_title(f'{method} | XT spike raster', fontweight='bold', loc='left', pad=15)
 
+        # ==========================================
+        # 子图 2：Local-Aligned Polar Histogram
+        # ==========================================
         ax_polar = fig.add_subplot(outer[row, 1], projection='polar')
+        true_vs = float(np.mean(method_pop['vector_strength'][selected]))
         
-        # Resize polar plot to be smaller
-        pos = ax_polar.get_position()
-        scale_ratio = 0.78
-        new_height = pos.height * scale_ratio
-        new_width = pos.width * scale_ratio
-        new_x = pos.x0 + (pos.width - new_width) / 2
-        new_y = pos.y0 + (pos.height - new_height) / 2
-        ax_polar.set_position([new_x, new_y, new_width, new_height])
+        aligned_phases = []
+        for i in range(len(selected)):
+            spike_idx = np.where(spikes[i])[0]
+            if len(spike_idx) > 0:
+                t_sec = spike_idx * dt
+                ph = (2.0 * np.pi * CARRIER_FREQ * t_sec) % (2.0 * np.pi)
+                
+                z1 = np.mean(np.exp(1j * ph))
+                z2 = np.mean(np.exp(1j * 2.0 * ph))
+                
+                if np.abs(z1) >= np.abs(z2) and np.abs(z1) > 1e-3:
+                    shift = np.angle(z1)
+                elif np.abs(z2) > 1e-3:
+                    shift = np.angle(z2) / 2.0
+                else:
+                    shift = 0.0
+                    
+                aligned = (ph - shift) % (2.0 * np.pi)
+                aligned_phases.extend(aligned)
 
-        spike_times_all = np.where(spikes[:, time_mask])[1] * dt
-        phases = (2.0 * np.pi * CARRIER_FREQ * spike_times_all) % (2.0 * np.pi)
-        if phases.size == 0:
-            phases = np.array([0.0])
-        bins = np.linspace(0, 2 * np.pi, 17)
-        ax_polar.hist(phases, bins=bins, color=METHOD_COLORS[method], alpha=0.8, edgecolor='white', zorder=5)
+        n_bins = 24
+        bin_width = 2.0 * np.pi / n_bins
+
+        if len(aligned_phases) > 0:
+            bin_indices = np.round(np.array(aligned_phases) / bin_width) % n_bins
+            counts = np.bincount(bin_indices.astype(int), minlength=n_bins).astype(float)
+            
+            if counts.max() > 0:
+                counts = counts / counts.max()
+
+            bin_centers = np.arange(n_bins) * bin_width
+            ax_polar.bar(bin_centers, counts, width=bin_width, bottom=0.0, 
+                         color=METHOD_COLORS[method], alpha=0.85, edgecolor='white', zorder=5)
         
-        # Ensure radial labels are on top
-        for label in ax_polar.get_yticklabels():
-            label.set_zorder(100)
-            # label.set_fontweight('bold')
-
-        vs = compute_vector_strength_from_spike_times(spike_times_all)
-        mean_angle = np.angle(np.mean(np.exp(1j * phases))) if phases.size else 0.0
-        ax_polar.plot([mean_angle, mean_angle], [0, ax_polar.get_rmax() if ax_polar.get_rmax() > 0 else 1], color='black', lw=2.2, zorder=10)
-        ax_polar.set_title(f'{method} | VS={vs:.3f}', va='bottom', fontweight='bold',y=1.16)
         ax_polar.set_theta_zero_location('N')
         ax_polar.set_theta_direction(-1)
+        
+        ax_polar.annotate("",
+            xy=(0, true_vs), xytext=(0, 0),
+            arrowprops=dict(arrowstyle="-|>", color='black', lw=3.0, mutation_scale=22), zorder=10
+        )
 
-    # fig.suptitle('Figure 3 | Spike Raster & Phase-Locking', fontweight='bold', y=0.995)
+        ax_polar.set_ylim(0, 1.0)
+        ax_polar.set_yticks([0.25, 0.5, 0.75, 1.0])
+        ax_polar.set_yticklabels(['', '0.5', '', '1.0'], fontsize=12, color='0.4')
+        
+        ax_polar.set_xticks(np.arange(0, 2.0 * np.pi, np.pi / 4.0))
+        ax_polar.set_xticklabels(['0°', '45°', '90°', '135°', '180°', '225°', '270°', '315°'], fontsize=14, zorder = 1000)
+        
+        # 【核心修复 3】大幅增加 pad 防止与 Title 重叠，找回丢失的 0° 标签
+        ax_polar.tick_params(axis='x', pad=-35, size=14)
+        ax_polar.set_title(f'Mean VS = {true_vs:.3f}', va='bottom', fontweight='bold', pad=16)
+
+    # 如果有子图重叠，可以在保存前调用 tight_layout，或者在这里显式调整
+    fig.subplots_adjust(hspace=0.4)
     save_figure(fig, OUTPUT_DIR / 'Figure_Neural_3_Spike_Raster_Phase_Locking')
-
 
 # =============================================================================
 # Figure 4
@@ -545,7 +624,7 @@ def plot_figure3(data: Dict) -> None:
 def plot_figure4(data: Dict) -> None:
     kwave = data['kwave']['methods']
     population = data['population']
-    fig, axes = plt.subplots(1, len(PRIMARY_COMPARE), figsize=FIGSIZE_Figure_4, sharey=True)
+    fig, axes = plt.subplots(1, len(PRIMARY_COMPARE), figsize=(14, 6.4), sharey=True, gridspec_kw={'wspace': 0.1})
 
     for ax, method in zip(axes, PRIMARY_COMPARE):
         method_data = kwave[method]
@@ -564,10 +643,10 @@ def plot_figure4(data: Dict) -> None:
             positive = np.maximum(u_drive, 0.0)
             weight_line = positive.mean(axis=1)
             comp_weights.append(weight_line[sort_idx])
-            ax.plot(x_coords * 1000.0, weight_line[sort_idx], color=COMPONENT_COLORS[key], lw=LINE_WIDTH, label=COMPONENT_LABELS[key])
+            ax.plot(x_coords * 1000.0, weight_line[sort_idx], color=COMPONENT_COLORS[key], lw=5, label=COMPONENT_LABELS[key])
 
         envelope = np.maximum.reduce(comp_weights)
-        ax.plot(x_coords * 1000.0, envelope, color='black', lw=3.0, ls='--', label='Max-pooling envelope')
+        ax.plot(x_coords * 1000.0, envelope, color='black', lw=5.0, ls='--', label='Max-pooling envelope', alpha=0.8)
         ax.fill_between(x_coords * 1000.0, 0, envelope, color='0.7', alpha=0.15)
         ax.set_title(f'{method}', fontweight='bold')
         ax.set_xlabel('x [mm]', fontweight='bold')
@@ -577,7 +656,7 @@ def plot_figure4(data: Dict) -> None:
     handles = [Line2D([0], [0], color=COMPONENT_COLORS[k], lw=LINE_WIDTH, label=COMPONENT_LABELS[k]) for k in ORTHO_COMPONENTS]
     handles.append(Line2D([0], [0], color='black', lw=3.0, ls='--', label='Max-pooling envelope'))
     fig.legend(handles=handles, loc='upper center', ncol=4, frameon=True, bbox_to_anchor=(0.5, 1.02))
-    fig.suptitle('Figure 4 | Directional Max-Pooling Resolution', fontweight='bold', y=1.08)
+    # fig.suptitle('Figure 4 | Directional Max-Pooling Resolution', fontweight='bold', y=1.08)
     save_figure(fig, OUTPUT_DIR / 'Figure_Neural_4_Directional_Max_Pooling')
 
 
@@ -585,50 +664,84 @@ def plot_figure4(data: Dict) -> None:
 # Figure 5
 # =============================================================================
 
-
-from scipy.ndimage import gaussian_filter
+from scipy.interpolate import griddata
 
 def plot_figure5(data: Dict) -> None:
     population = data['population']
     
-    # 1. 提取原始稀疏数据并进行二维高斯平滑
-    smoothed_maps = []
+    # 用于存储插值后的高分辨率连续场
+    high_res_maps = []
+    extents = None
+    
+    # 生成统一的高分辨率空间网格 (例如 100x100 像素，确保平滑)
+    grid_res = 100 
+    
     for m in METHOD_ORDER:
-        raw_map = np.asarray(population[m]['population_map'], dtype=np.float64)
-        # sigma=2.0 大约对应 2mm 的受体间距，完美模拟群体重叠感受野的空间融合
-        smoothed = gaussian_filter(raw_map, sigma=2.0)
-        smoothed_maps.append(smoothed)
+        method_pop = population[m]
+        # 提取绝对物理坐标和对应的权重
+        coords = method_pop['receptor_coords_m']
+        weights = np.asarray(method_pop['weights'], dtype=np.float64)
         
-    # 注意：必须在平滑后计算全局最大值，因为平滑会分散能量
-    vmax = max(np.max(m) for m in smoothed_maps)
+        if extents is None:
+            # 锁定物理坐标边界 (转换为毫米)
+            x_min, x_max = coords[:, 0].min(), coords[:, 0].max()
+            y_min, y_max = coords[:, 1].min(), coords[:, 1].max()
+            extents = [x_min * 1000, x_max * 1000, y_min * 1000, y_max * 1000]
+            
+            # 生成高分辨率的查询网格
+            grid_x, grid_y = np.meshgrid(
+                np.linspace(x_min, x_max, grid_res),
+                np.linspace(y_min, y_max, grid_res)
+            )
+            
+        # 核心修复：使用物理坐标进行三次样条插值 (Cubic Interpolation)
+        # 这无视任何数组的内部排序，直接在 2D 物理空间上重建连续的感受曲面
+        map_hr = griddata(
+            points=(coords[:, 0], coords[:, 1]), 
+            values=weights, 
+            xi=(grid_x, grid_y), 
+            method='cubic', 
+            fill_value=np.min(weights) # 边缘外推使用最小值
+        )
+        
+        high_res_maps.append(map_hr)
+        
+    # 计算全局颜色对齐的阈值
+    vmax = max(np.nanmax(sm) for sm in high_res_maps)
+    vmin = min(np.nanmin(sm) for sm in high_res_maps)
     
     fig, axes = plt.subplots(1, 5, figsize=(20, 4.8), constrained_layout=True)
     
-    for ax, method, sm in zip(axes, METHOD_ORDER, smoothed_maps):
-        # 2. 弃用 sns.heatmap，改用适合连续标量场的 ax.imshow
-        # origin='lower' 确保坐标原点在左下角，符合真实物理空间直觉
+    for ax, method, sm in zip(axes, METHOD_ORDER, high_res_maps):
+        
+        # 绘制极度平滑的连续空间触觉场
         im = ax.imshow(sm, cmap=POPULATION_CMAP, vmin=0, vmax=vmax, 
-                       origin='lower', aspect='equal', interpolation='bicubic')
+                       origin='lower', extent=extents, aspect='equal')
         
-        # 移除坐标轴刻度线
-        ax.set_xticks([])
-        ax.set_yticks([])
+        # 修正等高线逻辑：基于局部对比度的相对半高全宽
+        local_min = np.nanmin(sm)
+        local_max = np.nanmax(sm)
+        relative_thr = local_min + 0.5 * (local_max - local_min)
         
-        # 3. 提取并绘制半峰全宽 (FWHM) 的空间感知轮廓线
-        thr = 0.5 * np.max(sm)
-        if np.any(sm >= thr):
-            # 注意 origin 必须与 imshow 保持一致
-            ax.contour(sm, levels=[thr], colors='white', linewidths=1.8, origin='lower', alpha=0.9,zorder =100)
+        # 只有当对比度足够时才绘制等高线 (避免平坦区域画出杂乱线)
+        if (local_max - local_min) > (0.1 * vmax):
+            X_hr, Y_hr = np.meshgrid(
+                np.linspace(extents[0], extents[1], grid_res),
+                np.linspace(extents[2], extents[3], grid_res)
+            )
+            ax.contour(X_hr, Y_hr, sm, levels=[relative_thr], colors='white', linewidths=2.0, alpha=0.9)
             
         ax.set_title(method, fontweight='bold', fontsize=TITLE_SIZE)
+        ax.set_xticks([])
+        ax.set_yticks([])
 
-    # 4. 全局 Colorbar 
+    # 全局 Colorbar
     cbar = fig.colorbar(im, ax=axes, location='right', shrink=0.75, aspect=25)
     cbar.set_label('Population weight [a.u.]', fontweight='bold', fontsize=LABEL_SIZE)
     cbar.ax.tick_params(labelsize=TICK_SIZE)
     cbar.outline.set_linewidth(1.0)
     
-    # fig.suptitle('Figure 5 | Population Weight Maps (Smoothed)', fontweight='bold', fontsize=TITLE_SIZE+2, y=1.05)
+    # fig.suptitle('Figure 5 | Population Weight Maps', fontweight='bold', fontsize=TITLE_SIZE+2, y=1.05)
     save_figure(fig, OUTPUT_DIR / 'Figure_Neural_5_Population_Weight_Maps')
 
 
@@ -656,48 +769,66 @@ def plot_figure6(data: Dict) -> None:
     t_val = stats.t.ppf(0.975, max(n - 2, 1))
     conf = t_val * s_err * np.sqrt(1 / n + (x_fit - x_mean) ** 2 / max(ssx, 1e-12))
 
-    fig, ax = plt.subplots(figsize=(10, 10))
+    # Modified to 1x2 subplots
+    fig, axes = plt.subplots(1, 2, figsize=(14, 7), constrained_layout=True)
+    ax_reg = axes[0]
+    ax_mat = axes[1]
+
+    # --- Subplot 1: Regression ---
     for m, xi, yi, xe in zip(methods, x, y, xerr):
-        ax.errorbar(xi, yi, xerr=xe, fmt='o', ms=9, capsize=4, color=METHOD_COLORS[m], mec='black', mew=0.7)
-        ax.text(xi + 0.03, yi + 0.03, m, fontsize=LEGEND_SIZE, fontweight='bold')
-    ax.plot(x_fit, y_fit, color='black', lw=2.5)
-    ax.fill_between(x_fit, y_fit - conf, y_fit + conf, color='0.75', alpha=0.45)
-    ax.set_xlabel('Subjective BT score [log-odds ± SE]', fontweight='bold')
-    ax.set_ylabel('Predicted intensity z-score', fontweight='bold')
-    # ax.set_title('Figure 6 | Model vs. Psychophysics Alignment', fontweight='bold')
-    ax.grid(True, linestyle='--', alpha=0.35)
-    ax.text(0.03, 0.97, f'$R^2$ = {r_value ** 2:.3f}\n$p$ = {p_value:.3g}', transform=ax.transAxes, ha='left', va='top', fontsize=LEGEND_SIZE, bbox=dict(facecolor='white', alpha=0.85, edgecolor='0.8'))
+        ax_reg.errorbar(xi, yi, xerr=xe, fmt='o', ms=10, capsize=6, color=METHOD_COLORS[m], mec='black', mew=1.2, elinewidth=3, label=m)
+    
+    ax_reg.legend(loc='lower right', fontsize=LEGEND_SIZE, frameon=True, fancybox=True, framealpha=0.8)
 
-    ax.set_xlim(-1, 1)
-    ax.set_ylim(-3, 2)
+    ax_reg.plot(x_fit, y_fit, color='black', lw=2.5, alpha=0.8)
+    ax_reg.fill_between(x_fit, y_fit - conf, y_fit + conf, color='0.75', alpha=0.2)
+    ax_reg.set_xlabel('Subjective BT score (log-odds ± SE)', fontweight='bold', fontsize=20)
+    ax_reg.set_ylabel('Predicted intensity z-score', fontweight='bold', fontsize=20)
+    ax_reg.grid(True, linestyle='--', alpha=0.35)
+    
+    # R2 and p-value annotation
+    ax_reg.text(0.03, 0.97, f'$R^2$ = {r_value ** 2:.3f}\n$p$ = {p_value:.3g}**', 
+                transform=ax_reg.transAxes, ha='left', va='top', fontsize=20, 
+                bbox=dict(facecolor='white', alpha=0.85, edgecolor='0.8'))
 
-    inset = inset_axes(ax, width='50%', height='50%', loc='lower right', borderpad=1.2)
+    # Ensure square shape for the regression plot
+    ax_reg.set_box_aspect(1)
+
+    # --- Subplot 2: Symmetric Pairwise Matrix ---
     exp_mat = build_experiment_win_fraction_matrix(methods, experiment['win_matrix_csv'])
     model_mat = build_pairwise_matrix(methods, summary['pairwise']['intensity'])
+    
     combo = np.full_like(exp_mat, np.nan, dtype=np.float64)
     for i in range(len(methods)):
         for j in range(len(methods)):
-            if i > j:
-                combo[i, j] = exp_mat[i, j]
-            elif i < j:
+            if i < j:
+                # Upper triangle: Model P(Row > Col)
                 combo[i, j] = model_mat[i, j]
+            elif i > j:
+                # Lower triangle: Exp P(Col > Row)
+                combo[i, j] = exp_mat[j, i]
             else:
+                # Diagonal
                 combo[i, j] = 0.5
-    im = inset.imshow(combo, cmap='viridis', vmin=0, vmax=1)
-    inset.set_xticks(range(len(methods)))
-    inset.set_yticks(range(len(methods)))
-    inset.set_xticklabels(methods, rotation=0, ha='right', fontsize=9)
-    inset.set_yticklabels(methods, fontsize=9)
-    inset.set_title('Pairwise matrix\nlower: experiment / upper: model', fontsize=10, fontweight='bold')
+    im = ax_mat.imshow(combo, cmap='RdBu_r', vmin=0, vmax=1)
+    
+    ax_mat.set_xticks(range(len(methods)))
+    ax_mat.set_yticks(range(len(methods)))
+    ax_mat.set_xticklabels(methods, rotation=0, ha='center', va='top', fontsize=16, fontweight='bold')
+    ax_mat.set_yticklabels(methods, fontsize=16, ha='right', va='center', fontweight='bold')
+    
+    ax_mat.set_title('Upper: Model P(Row>Col) | Lower: Exp P(Col>Row)', fontsize=20, fontweight='bold', pad=15)
+    
     for i in range(len(methods)):
         for j in range(len(methods)):
             if np.isfinite(combo[i, j]):
-                inset.text(j, i, f'{combo[i, j]:.2f}', ha='center', va='center', color='white', fontsize=7)
-    cax = inset_axes(inset, width='5%', height='100%', loc='center right', borderpad=-2.4)
-    cb = plt.colorbar(im, cax=cax)
-    cb.ax.tick_params(labelsize=10)
-
+                text_color = 'white' if abs(combo[i, j] - 0.5) > 0.25 else 'black'
+                ax_mat.text(j, i, f'{combo[i, j]:.2f}', ha='center', va='center', 
+                            color=text_color, fontsize=18, fontweight='bold')
+    ax_mat.set_aspect('equal')
+    ax_mat.set_box_aspect(1)
     save_figure(fig, OUTPUT_DIR / 'Figure_Neural_6_Model_vs_Psychophysics')
+
 
 
 # =============================================================================
