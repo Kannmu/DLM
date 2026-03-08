@@ -61,7 +61,7 @@ LAMBDA_SPACE = 0.004
 RECEPTOR_SPACING = 0.002
 N_RASTER_NEURONS = 50
 RASTER_DURATION_MS = 15.0
-WATERFALL_RECEPTORS = 13
+WATERFALL_RECEPTORS = 11
 FREQ_MAX = 800.0
 
 METHOD_COLORS = {
@@ -71,7 +71,7 @@ METHOD_COLORS = {
     'LM_C': '#5ec962',
     'LM_L': '#fde725',
 }
-SPECTRUM_COLORS = {'ULM_L': '#c73e1d', 'LM_L': '#2a6fbb'}
+SPECTRUM_COLORS = {'ULM_L': '#440154', 'LM_L': '#fde725'}
 POPULATION_CMAP = 'magma'
 WAVE_CMAP = LinearSegmentedColormap.from_list('shear_div', ['#3b4cc0', '#f7f7f7', '#b40426'])
 
@@ -327,26 +327,28 @@ def build_experiment_win_fraction_matrix(methods: List[str], csv_path: str) -> n
 # =============================================================================
 # Figure 1
 # =============================================================================
-
 def plot_figure1(data: Dict) -> None:
     kwave = data['kwave']['methods']
     fig = plt.figure(figsize=(15, 8))
     outer = gridspec.GridSpec(1, 2, width_ratios=[1, 1], wspace=0.18)
 
-    # 第一遍遍历：计算全局最大值，保证左右两图的Y轴比例尺完全一致 (修复 2)
     global_max_tau = 0.0
-    global_max_m = 0.0
+    global_max_u = 0.0  # 改为追踪滤波后的 u(t)
     plot_data_cache = {}
 
     for method in PRIMARY_COMPARE:
         method_data = kwave[method]
-        dyn = compute_dynamic_components(method_data)['xy'] # 这里可以保留xy，展示特定波前
+        dyn = compute_dynamic_components(method_data)['xy'] 
         lattice = build_receptor_lattice(method_data['roi_x'], method_data['roi_y'])
         receptor_idx = choose_centerline_receptors(lattice['coords_m'], WATERFALL_RECEPTORS)
+        
         integrator = CoherentIntegrator(method_data['roi_x'], method_data['roi_y'], 
                                         lattice['coords_m'][receptor_idx], 
                                         SHEAR_SPEED, LAMBDA_SPACE, data['kwave']['dt'])
         m_drive = integrator.integrate(dyn)
+        
+        # 【核心修改】：在这里直接应用 Pacinian 滤波器
+        u_drive = apply_pacinian_filter(m_drive, data['kwave']['dt'])
 
         y_idx = int(np.argmin(np.abs(method_data['roi_y'])))
         x_indices = [int(np.argmin(np.abs(method_data['roi_x'] - x0))) for x0 in lattice['coords_m'][receptor_idx, 0]]
@@ -356,21 +358,20 @@ def plot_figure1(data: Dict) -> None:
         window_mask = t_ms >= (t_ms.max() - RASTER_DURATION_MS)
         
         tau_win = tau_traces[:, window_mask]
-        m_win = m_drive[:, window_mask]
+        u_win = u_drive[:, window_mask]  # 提取窗口内的 u(t)
         
         global_max_tau = max(global_max_tau, np.max(np.abs(tau_win)))
-        global_max_m = max(global_max_m, np.max(np.abs(m_win)))
+        global_max_u = max(global_max_u, np.max(np.abs(u_win)))
         
-        plot_data_cache[method] = (t_ms[window_mask], tau_win, m_win)
+        plot_data_cache[method] = (t_ms[window_mask], tau_win, u_win)
 
-    # 设定全局统一的 offset
     offset_tau = global_max_tau * 1.5 + 1e-6
-    offset_m = global_max_m * 1.2 + 1e-6
+    offset_u = global_max_u * 1.2 + 1e-6
 
     for col, method in enumerate(PRIMARY_COMPARE):
-        t_win, tau_win, m_win = plot_data_cache[method]
+        t_win, tau_win, u_win = plot_data_cache[method]
         
-        inner = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[col], height_ratios=[1, 1], hspace=0.15)
+        inner = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[col], height_ratios=[2.0, 1.0], hspace=0.15)
         ax_top = fig.add_subplot(inner[0])
         ax_bottom = fig.add_subplot(inner[1], sharex=ax_top)
 
@@ -381,27 +382,26 @@ def plot_figure1(data: Dict) -> None:
             ax_top.fill_between(t_win, base, base + np.clip(smooth, None, 0), color='#3b4cc0', alpha=0.45, linewidth=0)
             ax_top.plot(t_win, base + smooth, color='0.35', lw=0.9, alpha=0.9)
 
-        for ridx in range(m_win.shape[0]):
-            ax_bottom.plot(t_win, m_win[ridx] + ridx * offset_m, color='black', lw=1.6, alpha=0.9)
+        for ridx in range(u_win.shape[0]):
+            ax_bottom.plot(t_win, u_win[ridx] + ridx * offset_u, color='black', lw=1.6, alpha=0.9)
 
-        # 修复：合理的 Gain 计算（该方法的 m 极值 / tau 极值）
+        # 计算对受体的“有效驱动增益”
         method_max_tau = np.max(np.abs(tau_win))
-        method_max_m = np.max(np.abs(m_win))
-        gain = method_max_m / max(method_max_tau, 1e-12)
+        method_max_u = np.max(np.abs(u_win))
+        gain = method_max_u / max(method_max_tau, 1e-12)
 
         ax_top.set_title(f'{method} | Raw shear wavefronts', fontweight='bold')
-        ax_bottom.set_title(f'{method} | Delayed coherent drive m(t)', fontweight='bold', pad=6)
-        ax_top.text(0.02, 0.95, f'Peak Gain ≈ {gain:.1f}×', transform=ax_top.transAxes, 
+        ax_bottom.set_title(f'{method} | Effective neural drive u(t)', fontweight='bold', pad=6) # 标题修改
+        ax_top.text(0.02, 0.95, f'Effective Gain ≈ {gain:.1f}×', transform=ax_top.transAxes, 
                     ha='left', va='top', fontsize=LEGEND_SIZE, fontweight='bold',
                     bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', pad=2))
         
         ax_top.set_ylabel('Virtual receptors', fontweight='bold')
-        ax_bottom.set_ylabel('Integrated traces', fontweight='bold')
+        ax_bottom.set_ylabel('Filtered traces', fontweight='bold') # Y轴标签修改
         ax_bottom.set_xlabel('Time [ms]', fontweight='bold')
         
-        # 统一 Y 轴边界
         ax_top.set_ylim(-offset_tau, tau_win.shape[0] * offset_tau)
-        ax_bottom.set_ylim(-offset_m, m_win.shape[0] * offset_m)
+        ax_bottom.set_ylim(-offset_u, u_win.shape[0] * offset_u)
         
         ax_top.set_yticks(np.arange(tau_win.shape[0]) * offset_tau)
         ax_top.set_yticklabels([str(i + 1) for i in range(tau_win.shape[0])])
@@ -410,7 +410,7 @@ def plot_figure1(data: Dict) -> None:
         ax_bottom.grid(True, linestyle='--', alpha=0.35)
         ax_top.tick_params(labelbottom=False)
 
-    fig.suptitle('Figure 1 | Spatiotemporal Coherent Integration Dynamics', fontweight='bold', y=0.995)
+    # fig.suptitle('Figure 1 | Spatiotemporal Coherent Integration Dynamics', fontweight='bold', y=0.995)
     save_figure(fig, OUTPUT_DIR / 'Figure_Neural_1_Coherent_Integration_Dynamics')
 
 
@@ -455,8 +455,8 @@ def plot_figure2(data: Dict) -> None:
         spec_u_db = 20.0 * np.log10(spec_u + 1e-12)
         color = SPECTRUM_COLORS[method]
         
-        ax.plot(freqs_m, spec_m_db, color=color, lw=LINE_WIDTH, label=f'{method} | m(t)')
-        ax.plot(freqs_u, spec_u_db, color=color, lw=2.2, ls='--', alpha=0.8, label=f'{method} | u(t)')
+        ax.plot(freqs_m, spec_m_db, color=color, lw=LINE_WIDTH, label=f'{method} | m(t)', zorder=100)
+        ax.plot(freqs_u, spec_u_db, color=color, lw=2.2, ls='--', alpha=0.8, label=f'{method} | u(t)', zorder=50)
 
     ax.set_xlim(0, FREQ_MAX)
     ax.set_ylim(-200, 80) # 建议固定Y轴范围，避免数据抖动导致留白过大
@@ -475,8 +475,8 @@ def plot_figure2(data: Dict) -> None:
 
 def plot_figure3(data: Dict) -> None:
     population = data['population']
-    fig = plt.figure(figsize=(13, 10))
-    outer = gridspec.GridSpec(3, 2, width_ratios=[1.8, 1.0], wspace=0.15, hspace=0.4)
+    fig = plt.figure(figsize=(13, 12))
+    outer = gridspec.GridSpec(3, 2, width_ratios=[1.8, 1.0], wspace=0.05, hspace=0.3)
 
     for row, method in enumerate(RASTER_METHODS):
         method_pop = population[method]
@@ -495,29 +495,45 @@ def plot_figure3(data: Dict) -> None:
                 ax_raster.vlines(spike_times, n_idx - 0.38, n_idx + 0.38, color=METHOD_COLORS[method], lw=2)
         ax_raster.set_xlim(0, RASTER_DURATION_MS)
         ax_raster.set_ylim(0.5, len(selected) + 0.5)
-        ax_raster.set_ylabel(f'{method}\nNeuron #', fontweight='bold')
+        ax_raster.set_ylabel(f'{method} (Neuron #)', fontweight='bold')
         if row == len(RASTER_METHODS) - 1:
             ax_raster.set_xlabel('Time [ms]', fontweight='bold')
         else:
             ax_raster.tick_params(labelbottom=False)
         ax_raster.grid(True, linestyle='--', alpha=0.25)
-        ax_raster.set_title(f'{method} | Spike raster', fontweight='bold', loc='left',y=1.2)
+        ax_raster.set_title(f'{method} | Spike raster', fontweight='bold', loc='left',y=1.02)
 
         ax_polar = fig.add_subplot(outer[row, 1], projection='polar')
+        
+        # Resize polar plot to be smaller
+        pos = ax_polar.get_position()
+        scale_ratio = 0.78
+        new_height = pos.height * scale_ratio
+        new_width = pos.width * scale_ratio
+        new_x = pos.x0 + (pos.width - new_width) / 2
+        new_y = pos.y0 + (pos.height - new_height) / 2
+        ax_polar.set_position([new_x, new_y, new_width, new_height])
+
         spike_times_all = np.where(spikes[:, time_mask])[1] * dt
         phases = (2.0 * np.pi * CARRIER_FREQ * spike_times_all) % (2.0 * np.pi)
         if phases.size == 0:
             phases = np.array([0.0])
         bins = np.linspace(0, 2 * np.pi, 17)
-        ax_polar.hist(phases, bins=bins, color=METHOD_COLORS[method], alpha=0.8, edgecolor='white')
+        ax_polar.hist(phases, bins=bins, color=METHOD_COLORS[method], alpha=0.8, edgecolor='white', zorder=5)
+        
+        # Ensure radial labels are on top
+        for label in ax_polar.get_yticklabels():
+            label.set_zorder(100)
+            # label.set_fontweight('bold')
+
         vs = compute_vector_strength_from_spike_times(spike_times_all)
         mean_angle = np.angle(np.mean(np.exp(1j * phases))) if phases.size else 0.0
-        ax_polar.plot([mean_angle, mean_angle], [0, ax_polar.get_rmax() if ax_polar.get_rmax() > 0 else 1], color='black', lw=2.2)
-        ax_polar.set_title(f'{method} | Phase-locking | VS={vs:.3f}', va='bottom', fontweight='bold',y=1.2)
+        ax_polar.plot([mean_angle, mean_angle], [0, ax_polar.get_rmax() if ax_polar.get_rmax() > 0 else 1], color='black', lw=2.2, zorder=10)
+        ax_polar.set_title(f'{method} | VS={vs:.3f}', va='bottom', fontweight='bold',y=1.16)
         ax_polar.set_theta_zero_location('N')
         ax_polar.set_theta_direction(-1)
 
-    fig.suptitle('Figure 3 | Spike Raster & Phase-Locking', fontweight='bold', y=0.995)
+    # fig.suptitle('Figure 3 | Spike Raster & Phase-Locking', fontweight='bold', y=0.995)
     save_figure(fig, OUTPUT_DIR / 'Figure_Neural_3_Spike_Raster_Phase_Locking')
 
 
@@ -570,24 +586,49 @@ def plot_figure4(data: Dict) -> None:
 # =============================================================================
 
 
+from scipy.ndimage import gaussian_filter
+
 def plot_figure5(data: Dict) -> None:
     population = data['population']
-    maps = [population[m]['population_map'] for m in METHOD_ORDER]
-    vmax = max(np.max(m) for m in maps)
-    fig, axes = plt.subplots(1, 5, figsize=FIGSIZE_MATRIX, sharex=True, sharey=True)
-    last_im = None
-    for ax, method, pmap in zip(axes, METHOD_ORDER, maps):
-        arr = np.asarray(pmap, dtype=np.float64)
-        last_im = ax.imshow(arr, origin='lower', cmap=POPULATION_CMAP, vmin=0, vmax=vmax, aspect='auto')
-        thr = 0.5 * np.max(arr)
-        if np.any(arr >= thr):
-            ax.contour(arr, levels=[thr], colors='white', linewidths=1.7)
-        ax.set_title(method, fontweight='bold')
+    
+    # 1. 提取原始稀疏数据并进行二维高斯平滑
+    smoothed_maps = []
+    for m in METHOD_ORDER:
+        raw_map = np.asarray(population[m]['population_map'], dtype=np.float64)
+        # sigma=2.0 大约对应 2mm 的受体间距，完美模拟群体重叠感受野的空间融合
+        smoothed = gaussian_filter(raw_map, sigma=2.0)
+        smoothed_maps.append(smoothed)
+        
+    # 注意：必须在平滑后计算全局最大值，因为平滑会分散能量
+    vmax = max(np.max(m) for m in smoothed_maps)
+    
+    fig, axes = plt.subplots(1, 5, figsize=(20, 4.8), constrained_layout=True)
+    
+    for ax, method, sm in zip(axes, METHOD_ORDER, smoothed_maps):
+        # 2. 弃用 sns.heatmap，改用适合连续标量场的 ax.imshow
+        # origin='lower' 确保坐标原点在左下角，符合真实物理空间直觉
+        im = ax.imshow(sm, cmap=POPULATION_CMAP, vmin=0, vmax=vmax, 
+                       origin='lower', aspect='equal', interpolation='bicubic')
+        
+        # 移除坐标轴刻度线
         ax.set_xticks([])
         ax.set_yticks([])
-    cbar = fig.colorbar(last_im, ax=axes, fraction=0.022, pad=0.012)
-    cbar.set_label('Population weight [a.u.]', fontweight='bold')
-    fig.suptitle('Figure 5 | Population Weight Maps', fontweight='bold', y=0.98)
+        
+        # 3. 提取并绘制半峰全宽 (FWHM) 的空间感知轮廓线
+        thr = 0.5 * np.max(sm)
+        if np.any(sm >= thr):
+            # 注意 origin 必须与 imshow 保持一致
+            ax.contour(sm, levels=[thr], colors='white', linewidths=1.8, origin='lower', alpha=0.9,zorder =100)
+            
+        ax.set_title(method, fontweight='bold', fontsize=TITLE_SIZE)
+
+    # 4. 全局 Colorbar 
+    cbar = fig.colorbar(im, ax=axes, location='right', shrink=0.75, aspect=25)
+    cbar.set_label('Population weight [a.u.]', fontweight='bold', fontsize=LABEL_SIZE)
+    cbar.ax.tick_params(labelsize=TICK_SIZE)
+    cbar.outline.set_linewidth(1.0)
+    
+    # fig.suptitle('Figure 5 | Population Weight Maps (Smoothed)', fontweight='bold', fontsize=TITLE_SIZE+2, y=1.05)
     save_figure(fig, OUTPUT_DIR / 'Figure_Neural_5_Population_Weight_Maps')
 
 
@@ -615,7 +656,7 @@ def plot_figure6(data: Dict) -> None:
     t_val = stats.t.ppf(0.975, max(n - 2, 1))
     conf = t_val * s_err * np.sqrt(1 / n + (x_fit - x_mean) ** 2 / max(ssx, 1e-12))
 
-    fig, ax = plt.subplots(figsize=FIGSIZE_REGRESSION)
+    fig, ax = plt.subplots(figsize=(10, 10))
     for m, xi, yi, xe in zip(methods, x, y, xerr):
         ax.errorbar(xi, yi, xerr=xe, fmt='o', ms=9, capsize=4, color=METHOD_COLORS[m], mec='black', mew=0.7)
         ax.text(xi + 0.03, yi + 0.03, m, fontsize=LEGEND_SIZE, fontweight='bold')
@@ -623,11 +664,14 @@ def plot_figure6(data: Dict) -> None:
     ax.fill_between(x_fit, y_fit - conf, y_fit + conf, color='0.75', alpha=0.45)
     ax.set_xlabel('Subjective BT score [log-odds ± SE]', fontweight='bold')
     ax.set_ylabel('Predicted intensity z-score', fontweight='bold')
-    ax.set_title('Figure 6 | Model vs. Psychophysics Alignment', fontweight='bold')
+    # ax.set_title('Figure 6 | Model vs. Psychophysics Alignment', fontweight='bold')
     ax.grid(True, linestyle='--', alpha=0.35)
     ax.text(0.03, 0.97, f'$R^2$ = {r_value ** 2:.3f}\n$p$ = {p_value:.3g}', transform=ax.transAxes, ha='left', va='top', fontsize=LEGEND_SIZE, bbox=dict(facecolor='white', alpha=0.85, edgecolor='0.8'))
 
-    inset = inset_axes(ax, width='42%', height='42%', loc='lower right', borderpad=1.2)
+    ax.set_xlim(-1, 1)
+    ax.set_ylim(-3, 2)
+
+    inset = inset_axes(ax, width='50%', height='50%', loc='lower right', borderpad=1.2)
     exp_mat = build_experiment_win_fraction_matrix(methods, experiment['win_matrix_csv'])
     model_mat = build_pairwise_matrix(methods, summary['pairwise']['intensity'])
     combo = np.full_like(exp_mat, np.nan, dtype=np.float64)
@@ -642,7 +686,7 @@ def plot_figure6(data: Dict) -> None:
     im = inset.imshow(combo, cmap='viridis', vmin=0, vmax=1)
     inset.set_xticks(range(len(methods)))
     inset.set_yticks(range(len(methods)))
-    inset.set_xticklabels(methods, rotation=45, ha='right', fontsize=9)
+    inset.set_xticklabels(methods, rotation=0, ha='right', fontsize=9)
     inset.set_yticklabels(methods, fontsize=9)
     inset.set_title('Pairwise matrix\nlower: experiment / upper: model', fontsize=10, fontweight='bold')
     for i in range(len(methods)):
@@ -651,7 +695,7 @@ def plot_figure6(data: Dict) -> None:
                 inset.text(j, i, f'{combo[i, j]:.2f}', ha='center', va='center', color='white', fontsize=7)
     cax = inset_axes(inset, width='5%', height='100%', loc='center right', borderpad=-2.4)
     cb = plt.colorbar(im, cax=cax)
-    cb.ax.tick_params(labelsize=8)
+    cb.ax.tick_params(labelsize=10)
 
     save_figure(fig, OUTPUT_DIR / 'Figure_Neural_6_Model_vs_Psychophysics')
 
