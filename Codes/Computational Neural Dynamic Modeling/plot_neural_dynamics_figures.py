@@ -483,10 +483,10 @@ def plot_figure3(data: Dict) -> None:
         method_pop = population[method]
         coords = method_pop['receptor_coords_m']
         
-        # 1. 沿 Y=0 切线提取神经元
-        y_abs = np.abs(coords[:, 1])
-        y_min = np.min(y_abs)
-        line_idx = np.where(y_abs <= y_min + 1e-5)[0]
+        # 1. 严格提取距离 Y=0 最近的【单侧】水平切线上的神经元
+        # 修复 0.0mm 间距的重叠 Bug
+        center_y = coords[np.argmin(np.abs(coords[:, 1])), 1]
+        line_idx = np.where(np.isclose(coords[:, 1], center_y, atol=1e-6))[0]
         sorted_line = line_idx[np.argsort(coords[line_idx, 0])]
         
         if len(sorted_line) > N_RASTER_NEURONS:
@@ -506,13 +506,18 @@ def plot_figure3(data: Dict) -> None:
         for i in range(len(selected)):
             spikes[i] = all_spikes[best_comp_idx[i], i, :]
 
-        dt = float(data['kwave']['dt'])
+        # 3. 重建与 K-Wave 严格对齐的绝对物理时间轴
+        # 修复时间轴截断导致的相位计算错乱 Bug
+        t_vec_full = np.asarray(data['kwave']['methods'][method]['t'], dtype=np.float64)
         n_time = spikes.shape[1]
-        T_max_ms = n_time * dt * 1000.0
-        T_start_ms = T_max_ms - RASTER_DURATION_MS
+        t_trim_sec = t_vec_full[-n_time:]  # 提取与 spikes 维度对应的真实物理时间
+        t_trim_ms = t_trim_sec * 1000.0
+        
+        T_end_ms = float(t_trim_ms[-1])
+        T_start_ms = T_end_ms - RASTER_DURATION_MS
 
         # ==========================================
-        # 子图 1：XT-Spacetime Raster Plot (保持优化的物理真实呈现)
+        # 子图 1：XT-Spacetime Raster Plot
         # ==========================================
         ax_raster = fig.add_subplot(outer[row, 0])
         y_range = float(x_mm.max() - x_mm.min())
@@ -522,9 +527,9 @@ def plot_figure3(data: Dict) -> None:
             spike_idx = np.where(spikes[n_idx])[0]
             if len(spike_idx) == 0: continue
                 
-            spike_times_full = spike_idx * dt * 1000.0
-            valid = (spike_times_full >= T_start_ms) & (spike_times_full <= T_max_ms)
-            spike_times_win = spike_times_full[valid] - T_start_ms
+            spike_times_ms_full = t_trim_ms[spike_idx]
+            valid = (spike_times_ms_full >= T_start_ms) & (spike_times_ms_full <= T_end_ms)
+            spike_times_win = spike_times_ms_full[valid] - T_start_ms
             
             if len(spike_times_win) > 0:
                 y_pos = float(x_mm[n_idx])
@@ -544,11 +549,10 @@ def plot_figure3(data: Dict) -> None:
         ax_raster.set_title(f'{method} | XT spike raster', fontweight='bold', loc='left', pad=15)
 
         # ==========================================
-        # 子图 2：局部感受野群体绝对相位锁定 (Central ROI Phase Locking)
+        # 子图 2：局部感受野群体绝对相位锁定
         # ==========================================
         ax_polar = fig.add_subplot(outer[row, 1], projection='polar')
         
-        # 【核心修正】：只分析几何中心 +/- 3mm 范围内的神经元，评估真正的局部频率响应
         center_mask = np.abs(x_mm) <= 3.0
         center_indices = np.where(center_mask)[0]
         
@@ -556,17 +560,16 @@ def plot_figure3(data: Dict) -> None:
         for i in center_indices:
             spike_idx = np.where(spikes[i])[0]
             if len(spike_idx) > 0:
-                t_sec = spike_idx * dt
-                # 仅筛选展示窗口内的脉冲，确保左右图严谨对应
-                t_ms = t_sec * 1000.0
-                valid = (t_ms >= T_start_ms) & (t_ms <= T_max_ms)
-                t_sec_win = t_sec[valid]
+                true_t_sec = t_trim_sec[spike_idx]
+                true_t_ms = t_trim_ms[spike_idx]
                 
-                # 计算相对 200Hz 全局时钟的绝对物理相位 (不加任何人为平移偏移)
+                valid = (true_t_ms >= T_start_ms) & (true_t_ms <= T_end_ms)
+                t_sec_win = true_t_sec[valid]
+                
+                # 计算相对 200Hz 全局物理时钟的真实绝对相位
                 ph = (2.0 * np.pi * CARRIER_FREQ * t_sec_win) % (2.0 * np.pi)
                 absolute_phases.extend(ph)
 
-        # 计算局部的群体 Vector Strength (这是真实的频率保真度反映)
         if len(absolute_phases) > 0:
             complex_phases = np.exp(1j * np.array(absolute_phases))
             local_vs = float(np.abs(np.mean(complex_phases)))
@@ -586,12 +589,11 @@ def plot_figure3(data: Dict) -> None:
 
             bin_centers = np.arange(n_bins) * bin_width + bin_width / 2.0
             ax_polar.bar(bin_centers, counts, width=bin_width, bottom=0.0, align='center',
-                         color=METHOD_COLORS[method], alpha=0.85, edgecolor='white', linewidth=0.5, zorder=5)
+                         color=METHOD_COLORS.get(method, '#333333'), alpha=0.85, edgecolor='white', linewidth=0.5, zorder=5)
         
         ax_polar.set_theta_zero_location('N')
         ax_polar.set_theta_direction(-1)
         
-        # 画出真实的 VS 向量
         if local_vs > 0.01:
             ax_polar.annotate("",
                 xy=(mean_angle, local_vs), xytext=(0, 0),
@@ -605,7 +607,6 @@ def plot_figure3(data: Dict) -> None:
         ax_polar.set_xticklabels(['0°', '45°', '90°', '135°', '180°', '225°', '270°', '315°'], fontsize=14, zorder=1000)
         ax_polar.tick_params(axis='x', pad=-35, size=14)
         
-        # 标题强调是 Local 200Hz VS，防止被误解为全域混叠
         ax_polar.set_title(f'Central ROI (200Hz VS) = {local_vs:.3f}', va='bottom', fontweight='bold', pad=20)
 
     fig.subplots_adjust(hspace=0.4)

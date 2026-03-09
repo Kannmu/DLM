@@ -148,6 +148,7 @@ Nature/Science 旗下的所有适合的子刊。
   - 包含 1Hz 心跳灯 (`LED0`)、校准模式指示灯 (`LED1`) 以及 Demo 模式状态指示灯 (`LED2`)。
 
 
+## 论文内容
 
 ### 实验1
 
@@ -547,6 +548,13 @@ Nature/Science 旗下的所有适合的子刊。
 
 - **DLM_3** 与 **LM_C** 对比，各项实验结果和仿真结果均非常接近。在心理物理学实验中两者在强度分数、精度分数上都非常接近，并且被试在区别两者时的反应时长比起其他刺激对显著更长，这个结果也表示两者非常相似，使用三个离散聚焦点“转移”即可实现绝大部分LM_C的效果，工程上可以用来指导刺激调制方式设计。LM_C的优势在聚焦点平滑移动，因此可以实现几乎没有可听频段的噪声。
 - 但是DLM_3在两个分数上都略高于LM_C（但不显著），这可能表明由于DLM_3的离散控制，每个聚焦点停留时间都较长，从而可以充分给皮肤足够时间产生响应。而LM_C方法由于是连续聚焦点移动，可能使得皮肤上每个点来不及响应，到不了最大程度的响应，从而影响效果。
+
+
+### 测量1：2D LDV 实际测量
+
+#### 测量1设计
+
+**PlaceHolder**
 
 
 
@@ -976,6 +984,16 @@ P(A \succ B)=\sigma(\hat S_A-\hat S_B)
 [5] Talbot W H，Darian-Smith I，Kornhuber H H，et al. The sense of flutter-vibration: comparison of the human capacity with response patterns of mechanoreceptive afferents from the monkey hand. Journal of Neurophysiology，1968，31（2）：301-334.
 [6] Mountcastle V B，Talbot W H，Darian-Smith I，et al. Neural basis of the sense of flutter-vibration. Science，1967，155（3762）：597-600.
 [7] Loewenstein W R，Skalak R. Mechanical transmission in a pacinian corpuscle. an analysis and a theory. Journal of Physiology，1966，182（2）：346-378.
+
+
+### AI-Driven Discovery
+
+
+
+
+
+### 应用 Application
+
 
 
 
