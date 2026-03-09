@@ -1048,9 +1048,9 @@ FUNCTION {format.booktitle}
   emphasize
 }
 FUNCTION {format.in.ed.booktitle}
-{  duplicate$ empty$ 'skip$
+{  booktitle empty$ 'skip$
     { 
-editor "editor" format.names.ed duplicate$ empty$ 'pop$
+editor "editor" format.names.ed duplicate$ empty$ { pop$ format.booktitle }
         {  
 format.booktitle swap$
 "(" editor num.names$ #1 > 'bbl.in.editors 'bbl.editor if$  * swap$   ") " *

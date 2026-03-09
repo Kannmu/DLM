@@ -420,7 +420,7 @@ def plot_figure1(data: Dict) -> None:
 
 def plot_figure2(data: Dict) -> None:
     kwave = data['kwave']['methods']
-    fig, ax = plt.subplots(figsize=FIGSIZE_SINGLE)
+    fig, ax = plt.subplots(figsize=(12,8))
     ax.axvspan(BANDPASS_LOW, BANDPASS_HIGH, color='0.85', alpha=0.7, zorder=0)
     ax.text((BANDPASS_LOW + BANDPASS_HIGH) / 2.0, -180, 'Pacinian band-pass', 
             ha='center', va='bottom', fontsize=LEGEND_SIZE, fontweight='bold')
@@ -467,9 +467,7 @@ def plot_figure2(data: Dict) -> None:
     ax.legend(frameon=True, ncol=1, loc='lower right')
     save_figure(fig, OUTPUT_DIR / 'Figure_Neural_2_Frequency_Fidelity')
 
-# =============================================================================
-# Figure 3 (Physically Accurate & Visually Continuous)
-# =============================================================================
+
 def plot_figure3(data: Dict) -> None:
     population = data['population']
     fig = plt.figure(figsize=(13, 14))
@@ -499,7 +497,7 @@ def plot_figure3(data: Dict) -> None:
             
         x_mm = coords[selected, 0] * 1000.0  
         
-        # 2. 提取动态主导分量
+        # 2. 提取驱动最强分量的脉冲
         all_spikes = method_pop['spikes'][:, selected, :] 
         spike_counts = all_spikes.sum(axis=2)
         best_comp_idx = np.argmax(spike_counts, axis=0)
@@ -514,17 +512,15 @@ def plot_figure3(data: Dict) -> None:
         T_start_ms = T_max_ms - RASTER_DURATION_MS
 
         # ==========================================
-        # 子图 1：XT-Spacetime Raster Plot
+        # 子图 1：XT-Spacetime Raster Plot (保持优化的物理真实呈现)
         # ==========================================
         ax_raster = fig.add_subplot(outer[row, 0])
-        
         y_range = float(x_mm.max() - x_mm.min())
-        dy = (y_range / max(1, len(x_mm) - 1)) * 1.05
+        dy = y_range / max(1, len(x_mm) - 1)
             
         for n_idx in range(len(selected)):
             spike_idx = np.where(spikes[n_idx])[0]
-            if len(spike_idx) == 0:
-                continue
+            if len(spike_idx) == 0: continue
                 
             spike_times_full = spike_idx * dt * 1000.0
             valid = (spike_times_full >= T_start_ms) & (spike_times_full <= T_max_ms)
@@ -532,17 +528,11 @@ def plot_figure3(data: Dict) -> None:
             
             if len(spike_times_win) > 0:
                 y_pos = float(x_mm[n_idx])
-                # 【核心修复 1】将线宽 lw 提升至 6.5，使得脉冲在时间轴(X)上的宽度足以覆盖相邻感受器间的波传播延迟(约0.4ms)
-                # 这会将视觉上的“离散阶梯”无缝融合为“物理上连续的宏观马赫锥波前”
-                ax_raster.vlines(x=spike_times_win, 
-                                 ymin=y_pos - dy/2.0, 
-                                 ymax=y_pos + dy/2.0, 
-                                 color=RASTER_COLORS[method], lw=6.5, alpha=0.9, zorder=3)
+                ax_raster.vlines(x=spike_times_win, ymin=y_pos - dy * 0.45, ymax=y_pos + dy * 0.45, 
+                                 color=RASTER_COLORS[method], lw=1.5, alpha=0.9, zorder=3)
                 
         ax_raster.set_xlim(0, float(RASTER_DURATION_MS))
         ax_raster.set_ylim(float(x_mm.min() - dy), float(x_mm.max() + dy))
-        
-        # 【核心修复 2】清理冗余的 Y 轴标签，使得左侧更加干净
         ax_raster.set_ylabel('Position X [mm]', fontweight='bold')
         
         if row == len(RASTER_METHODS) - 1:
@@ -554,67 +544,73 @@ def plot_figure3(data: Dict) -> None:
         ax_raster.set_title(f'{method} | XT spike raster', fontweight='bold', loc='left', pad=15)
 
         # ==========================================
-        # 子图 2：Local-Aligned Polar Histogram
+        # 子图 2：局部感受野群体绝对相位锁定 (Central ROI Phase Locking)
         # ==========================================
         ax_polar = fig.add_subplot(outer[row, 1], projection='polar')
-        true_vs = float(np.mean(method_pop['vector_strength'][selected]))
         
-        aligned_phases = []
-        for i in range(len(selected)):
+        # 【核心修正】：只分析几何中心 +/- 3mm 范围内的神经元，评估真正的局部频率响应
+        center_mask = np.abs(x_mm) <= 3.0
+        center_indices = np.where(center_mask)[0]
+        
+        absolute_phases = []
+        for i in center_indices:
             spike_idx = np.where(spikes[i])[0]
             if len(spike_idx) > 0:
                 t_sec = spike_idx * dt
-                ph = (2.0 * np.pi * CARRIER_FREQ * t_sec) % (2.0 * np.pi)
+                # 仅筛选展示窗口内的脉冲，确保左右图严谨对应
+                t_ms = t_sec * 1000.0
+                valid = (t_ms >= T_start_ms) & (t_ms <= T_max_ms)
+                t_sec_win = t_sec[valid]
                 
-                z1 = np.mean(np.exp(1j * ph))
-                z2 = np.mean(np.exp(1j * 2.0 * ph))
-                
-                if np.abs(z1) >= np.abs(z2) and np.abs(z1) > 1e-3:
-                    shift = np.angle(z1)
-                elif np.abs(z2) > 1e-3:
-                    shift = np.angle(z2) / 2.0
-                else:
-                    shift = 0.0
-                    
-                aligned = (ph - shift) % (2.0 * np.pi)
-                aligned_phases.extend(aligned)
+                # 计算相对 200Hz 全局时钟的绝对物理相位 (不加任何人为平移偏移)
+                ph = (2.0 * np.pi * CARRIER_FREQ * t_sec_win) % (2.0 * np.pi)
+                absolute_phases.extend(ph)
+
+        # 计算局部的群体 Vector Strength (这是真实的频率保真度反映)
+        if len(absolute_phases) > 0:
+            complex_phases = np.exp(1j * np.array(absolute_phases))
+            local_vs = float(np.abs(np.mean(complex_phases)))
+            mean_angle = float(np.angle(np.mean(complex_phases)))
+        else:
+            local_vs = 0.0
+            mean_angle = 0.0
 
         n_bins = 24
         bin_width = 2.0 * np.pi / n_bins
 
-        if len(aligned_phases) > 0:
-            bin_indices = np.round(np.array(aligned_phases) / bin_width) % n_bins
-            counts = np.bincount(bin_indices.astype(int), minlength=n_bins).astype(float)
-            
+        if len(absolute_phases) > 0:
+            bin_indices = np.floor(np.array(absolute_phases) / bin_width).astype(int) % n_bins
+            counts = np.bincount(bin_indices, minlength=n_bins).astype(float)
             if counts.max() > 0:
                 counts = counts / counts.max()
 
-            bin_centers = np.arange(n_bins) * bin_width
-            ax_polar.bar(bin_centers, counts, width=bin_width, bottom=0.0, 
-                         color=METHOD_COLORS[method], alpha=0.85, edgecolor='white', zorder=5)
+            bin_centers = np.arange(n_bins) * bin_width + bin_width / 2.0
+            ax_polar.bar(bin_centers, counts, width=bin_width, bottom=0.0, align='center',
+                         color=METHOD_COLORS[method], alpha=0.85, edgecolor='white', linewidth=0.5, zorder=5)
         
         ax_polar.set_theta_zero_location('N')
         ax_polar.set_theta_direction(-1)
         
-        ax_polar.annotate("",
-            xy=(0, true_vs), xytext=(0, 0),
-            arrowprops=dict(arrowstyle="-|>", color='black', lw=3.0, mutation_scale=22), zorder=10
-        )
+        # 画出真实的 VS 向量
+        if local_vs > 0.01:
+            ax_polar.annotate("",
+                xy=(mean_angle, local_vs), xytext=(0, 0),
+                arrowprops=dict(arrowstyle="-|>", facecolor='black', edgecolor='black', lw=3.0, mutation_scale=25), zorder=10
+            )
 
         ax_polar.set_ylim(0, 1.0)
         ax_polar.set_yticks([0.25, 0.5, 0.75, 1.0])
         ax_polar.set_yticklabels(['', '0.5', '', '1.0'], fontsize=12, color='0.4')
-        
         ax_polar.set_xticks(np.arange(0, 2.0 * np.pi, np.pi / 4.0))
-        ax_polar.set_xticklabels(['0°', '45°', '90°', '135°', '180°', '225°', '270°', '315°'], fontsize=14, zorder = 1000)
-        
-        # 【核心修复 3】大幅增加 pad 防止与 Title 重叠，找回丢失的 0° 标签
+        ax_polar.set_xticklabels(['0°', '45°', '90°', '135°', '180°', '225°', '270°', '315°'], fontsize=14, zorder=1000)
         ax_polar.tick_params(axis='x', pad=-35, size=14)
-        ax_polar.set_title(f'Mean VS = {true_vs:.3f}', va='bottom', fontweight='bold', pad=16)
+        
+        # 标题强调是 Local 200Hz VS，防止被误解为全域混叠
+        ax_polar.set_title(f'Central ROI (200Hz VS) = {local_vs:.3f}', va='bottom', fontweight='bold', pad=20)
 
-    # 如果有子图重叠，可以在保存前调用 tight_layout，或者在这里显式调整
     fig.subplots_adjust(hspace=0.4)
     save_figure(fig, OUTPUT_DIR / 'Figure_Neural_3_Spike_Raster_Phase_Locking')
+
 
 # =============================================================================
 # Figure 4
@@ -710,12 +706,12 @@ def plot_figure5(data: Dict) -> None:
     vmax = max(np.nanmax(sm) for sm in high_res_maps)
     vmin = min(np.nanmin(sm) for sm in high_res_maps)
     
-    fig, axes = plt.subplots(1, 5, figsize=(20, 4.8), constrained_layout=True)
+    fig, axes = plt.subplots(1, 5, figsize=(25, 4.8), constrained_layout=True)
     
     for ax, method, sm in zip(axes, METHOD_ORDER, high_res_maps):
         
         # 绘制极度平滑的连续空间触觉场
-        im = ax.imshow(sm, cmap=POPULATION_CMAP, vmin=0, vmax=vmax, 
+        im = ax.imshow(sm, cmap='Greens', vmin=0, vmax=vmax, 
                        origin='lower', extent=extents, aspect='equal')
         
         # 修正等高线逻辑：基于局部对比度的相对半高全宽
@@ -769,12 +765,9 @@ def plot_figure6(data: Dict) -> None:
     t_val = stats.t.ppf(0.975, max(n - 2, 1))
     conf = t_val * s_err * np.sqrt(1 / n + (x_fit - x_mean) ** 2 / max(ssx, 1e-12))
 
-    # Modified to 1x2 subplots
-    fig, axes = plt.subplots(1, 2, figsize=(14, 7), constrained_layout=True)
-    ax_reg = axes[0]
-    ax_mat = axes[1]
+    # --- Figure 6a: Regression ---
+    fig_reg, ax_reg = plt.subplots(figsize=(8, 8), constrained_layout=True)
 
-    # --- Subplot 1: Regression ---
     for m, xi, yi, xe in zip(methods, x, y, xerr):
         ax_reg.errorbar(xi, yi, xerr=xe, fmt='o', ms=10, capsize=6, color=METHOD_COLORS[m], mec='black', mew=1.2, elinewidth=3, label=m)
     
@@ -793,8 +786,11 @@ def plot_figure6(data: Dict) -> None:
 
     # Ensure square shape for the regression plot
     ax_reg.set_box_aspect(1)
+    save_figure(fig_reg, OUTPUT_DIR / 'Figure_Neural_6a_Model_vs_Psychophysics_Regression')
 
-    # --- Subplot 2: Symmetric Pairwise Matrix ---
+    # --- Figure 6b: Symmetric Pairwise Matrix ---
+    fig_mat, ax_mat = plt.subplots(figsize=(8, 8), constrained_layout=True)
+
     exp_mat = build_experiment_win_fraction_matrix(methods, experiment['win_matrix_csv'])
     model_mat = build_pairwise_matrix(methods, summary['pairwise']['intensity'])
     
@@ -810,7 +806,7 @@ def plot_figure6(data: Dict) -> None:
             else:
                 # Diagonal
                 combo[i, j] = 0.5
-    im = ax_mat.imshow(combo, cmap='RdBu_r', vmin=0, vmax=1)
+    im = ax_mat.imshow(combo, cmap='Greens', vmin=0, vmax=1)
     
     ax_mat.set_xticks(range(len(methods)))
     ax_mat.set_yticks(range(len(methods)))
@@ -822,12 +818,13 @@ def plot_figure6(data: Dict) -> None:
     for i in range(len(methods)):
         for j in range(len(methods)):
             if np.isfinite(combo[i, j]):
-                text_color = 'white' if abs(combo[i, j] - 0.5) > 0.25 else 'black'
+                # text_color = 'white' if abs(combo[i, j] - 0.5) > 0.25 else 'black'
+                text_color = 'white'
                 ax_mat.text(j, i, f'{combo[i, j]:.2f}', ha='center', va='center', 
                             color=text_color, fontsize=18, fontweight='bold')
     ax_mat.set_aspect('equal')
     ax_mat.set_box_aspect(1)
-    save_figure(fig, OUTPUT_DIR / 'Figure_Neural_6_Model_vs_Psychophysics')
+    save_figure(fig_mat, OUTPUT_DIR / 'Figure_Neural_6b_Model_vs_Psychophysics_Matrix')
 
 
 
