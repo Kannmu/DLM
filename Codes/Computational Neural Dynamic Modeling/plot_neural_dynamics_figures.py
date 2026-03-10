@@ -227,6 +227,17 @@ def compute_vector_strength_from_spike_times(spike_times_s: np.ndarray, f0: floa
     return float(np.abs(np.mean(phases)))
 
 
+def compute_vector_strength_from_spike_train(spike_train: np.ndarray, dt: float, f0: float = CARRIER_FREQ) -> float:
+    spike_train = np.asarray(spike_train)
+    if spike_train.size == 0:
+        return 0.0
+    spike_idx = np.flatnonzero(spike_train > 0)
+    if spike_idx.size == 0:
+        return 0.0
+    spike_times_s = spike_idx.astype(np.float64) * float(dt)
+    return compute_vector_strength_from_spike_times(spike_times_s, f0)
+
+
 # =============================================================================
 # Analysis data assembly
 # =============================================================================
@@ -467,237 +478,475 @@ def plot_figure2(data: Dict) -> None:
     ax.legend(frameon=True, ncol=1, loc='lower right')
     save_figure(fig, OUTPUT_DIR / 'Figure_Neural_2_Frequency_Fidelity')
 
-
-
 def plot_figure3(data: Dict) -> None:
-    print("\n" + "="*85)
-    print("[DEBUG] STARTING PLOT_FIGURE_3 (3D POOLED FIRST-PRINCIPLE DRIVEN)")
-    print("="*85)
-    
+    """
+    Figure 3 | Phase-folded centerline effective neural-drive magnitude.
+
+    Final repaired version.
+
+    What is plotted:
+        E(x,t) = sqrt(mean_c( u_c(x,t)^2 ))
+    where u_c is the signed Pacinian-bandpassed coherent drive for each shear component.
+
+    Why this fixes the previous figure:
+    - removes the artificial left-right bias introduced by half-wave rectification
+    - removes unstable cross-component max-pooling
+    - respects rotational methods (DLM_3, LM_C)
+    - phase-folds the final 15 ms into one 5 ms modulation cycle, improving robustness
+    - directly visualizes within-cycle spatiotemporal recruitment structure
+    """
+
+    print("\n" + "=" * 110)
+    print("[DEBUG][FIG3-FINAL] START | Figure 3 final repaired version")
+    print("=" * 110)
+
+    kwave = data['kwave']['methods']
     population = data['population']
-    fig = plt.figure(figsize=(13, 14))
-    outer = gridspec.GridSpec(3, 2, width_ratios=[2.2, 1.0], wspace=0.15, hspace=0.4)
+    dt = float(data['kwave']['dt'])
+    dt_ms = dt * 1000.0
 
-    RASTER_COLORS = {
-        'ULM_L': '#440154',
-        'DLM_2': '#3b528b',
-        'LM_L': '#b89500'  
-    }
+    cycle_ms = 1000.0 / CARRIER_FREQ   # 200 Hz -> 5 ms
+    n_phase_bins = 240                 # robust and smooth enough
+    print(f"[DEBUG][FIG3-FINAL] dt = {dt:.9f} s ({dt_ms:.6f} ms)")
+    print(f"[DEBUG][FIG3-FINAL] cycle_ms = {cycle_ms:.6f} ms")
+    print(f"[DEBUG][FIG3-FINAL] phase bins = {n_phase_bins}")
+    print(f"[DEBUG][FIG3-FINAL] window = last {RASTER_DURATION_MS:.3f} ms")
 
-    for row, method in enumerate(RASTER_METHODS):
-        print(f"\n---> [DEBUG] ================= Analyzing Method: {method} =================")
-        method_pop = population[method]
-        coords = method_pop['receptor_coords_m']
-        
-        # 1. 提取中心水平切线
-        center_y = coords[np.argmin(np.abs(coords[:, 1])), 1]
-        line_idx = np.where(np.isclose(coords[:, 1], center_y, atol=1e-6))[0]
-        sorted_line = line_idx[np.argsort(coords[line_idx, 0])]
-        
-        if len(sorted_line) > N_RASTER_NEURONS:
-            start = (len(sorted_line) - N_RASTER_NEURONS) // 2
-            selected = sorted_line[start:start+N_RASTER_NEURONS]
-        else:
-            selected = sorted_line
-            
-        x_mm = coords[selected, 0] * 1000.0  
-        print(f"[DEBUG - SPACE] Baseline Y={center_y*1000:.3f} mm. X bounds: [{x_mm.min():.2f}, {x_mm.max():.2f}] mm")
-        
-        # 2. RASTER PLOT DATA (Original Spike Pooling Logic)
-        all_spikes = method_pop['spikes'][:, selected, :]  # Shape: (3, N_neurons, N_time)
-        spikes_pooled = np.any(all_spikes, axis=0)         # Shape: (N_neurons, N_time)
-        print(f"[DEBUG - PHYSICS] Pooled spikes across xy, xz, yz components. Shape: {spikes_pooled.shape}")
+    # -------------------------------------------------------------------------
+    # Helpers
+    # -------------------------------------------------------------------------
+    def _safe_stats(arr: np.ndarray) -> Dict[str, float]:
+        arr = np.asarray(arr, dtype=np.float64)
+        if arr.size == 0:
+            return {
+                'min': np.nan, 'max': np.nan, 'mean': np.nan, 'std': np.nan,
+                'p01': np.nan, 'p50': np.nan, 'p99': np.nan
+            }
+        return {
+            'min': float(np.nanmin(arr)),
+            'max': float(np.nanmax(arr)),
+            'mean': float(np.nanmean(arr)),
+            'std': float(np.nanstd(arr)),
+            'p01': float(np.nanpercentile(arr, 1)),
+            'p50': float(np.nanpercentile(arr, 50)),
+            'p99': float(np.nanpercentile(arr, 99)),
+        }
 
-        # 3. 时间轴对齐
-        t_vec_full = np.asarray(data['kwave']['methods'][method]['t'], dtype=np.float64)
-        n_time = spikes_pooled.shape[1]
-        t_trim_sec = t_vec_full[-n_time:]  
-        t_trim_ms = t_trim_sec * 1000.0
-        
-        T_end_ms = float(t_trim_ms[-1])
-        T_start_ms = T_end_ms - RASTER_DURATION_MS
-
-        # ==========================================
-        # 子图 1：XT-Spacetime Raster Plot
-        # ==========================================
-        ax_raster = fig.add_subplot(outer[row, 0])
-        y_range = float(x_mm.max() - x_mm.min())
-        dy = y_range / max(1, len(x_mm) - 1)
-        
-        total_raw_spikes_in_win = 0
-            
-        for n_idx in range(len(selected)):
-            spike_idx = np.where(spikes_pooled[n_idx])[0]
-            if len(spike_idx) == 0: continue
-                
-            spike_times_ms_full = t_trim_ms[spike_idx]
-            
-            # --- 核心科学修正：单神经轴突全局绝对不应期 (2.0 ms) ---
-            axon_filtered_spikes = []
-            last_t = -999.0
-            for t in spike_times_ms_full:
-                if t - last_t > 2.0:  # 严格锁定 2.0 ms
-                    axon_filtered_spikes.append(t)
-                    last_t = t
-            spike_times_ms_full = np.array(axon_filtered_spikes)
-            # --------------------------------------------------------
-            valid_raw = (spike_times_ms_full >= T_start_ms) & (spike_times_ms_full <= T_end_ms)
-            spike_times_win = spike_times_ms_full[valid_raw] - T_start_ms
-            
-            total_raw_spikes_in_win += np.sum(valid_raw)
-            
-            if len(spike_times_win) > 0:
-                y_pos = float(x_mm[n_idx])
-                ax_raster.vlines(x=spike_times_win, ymin=y_pos - dy * 0.45, ymax=y_pos + dy * 0.45, 
-                                 color=RASTER_COLORS[method], lw=1.5, alpha=0.9, zorder=3)
-                
-        print(f"[DEBUG - RASTER] Pooled spikes plotted in window -> RAW: {total_raw_spikes_in_win}")
-                
-        ax_raster.set_xlim(0, float(RASTER_DURATION_MS))
-        view_limit = 12.0
-        ax_raster.set_ylim(-view_limit, view_limit)
-        ax_raster.set_ylabel('Position X [mm]', fontweight='bold')
-        
-        if row == len(RASTER_METHODS) - 1:
-            ax_raster.set_xlabel('Time [ms]', fontweight='bold')
-        else:
-            ax_raster.tick_params(labelbottom=False)
-            
-        ax_raster.grid(True, linestyle='--', alpha=0.4, zorder=0)
-        ax_raster.set_title(f'{method} | XT spike raster', fontweight='bold', loc='left', pad=15)
-
-        # ==========================================
-        # 子图 2：局部感受野受体级频率保真度 (Delay-compensated Group Event VS)
-        # ==========================================
-        ax_polar = fig.add_subplot(outer[row, 1], projection='polar')
-        
-        # --- Compute pooled analog drive for polar plot ---
-        method_data = data['kwave']['methods'][method]
-        dyn_all = compute_dynamic_components(method_data)
-        
-        integrator = CoherentIntegrator(
-            method_data['roi_x'], 
-            method_data['roi_y'], 
-            coords[selected], 
-            SHEAR_SPEED, 
-            LAMBDA_SPACE, 
-            data['kwave']['dt']
+    def _print_stats(tag: str, arr: np.ndarray) -> None:
+        s = _safe_stats(arr)
+        print(
+            f"{tag} | "
+            f"min={s['min']:.6g}, max={s['max']:.6g}, mean={s['mean']:.6g}, std={s['std']:.6g}, "
+            f"p01={s['p01']:.6g}, p50={s['p50']:.6g}, p99={s['p99']:.6g}"
         )
-        
-        u_components = []
-        for comp in ORTHO_COMPONENTS:
-            m_comp = integrator.integrate(dyn_all[comp])
-            u_comp = apply_pacinian_filter(m_comp, data['kwave']['dt'])
-            u_components.append(np.maximum(u_comp, 0.0))
-        
-        u_pool = np.maximum.reduce(u_components)   # shape: (N_selected, Nt)
 
-        # Extract events
-        dt = data['kwave']['dt']
-        min_dist = max(1, int(round(0.002 / dt)))
-        
-        # Align u_pool time vector
-        t_ms_full = method_data['t'] * 1000.0
-        window_mask = (t_ms_full >= T_start_ms) & (t_ms_full <= T_end_ms)
-        
-        event_times_by_neuron = []
-        for i in range(u_pool.shape[0]):
-            trace = u_pool[i]
-            win_trace = trace[window_mask]
-            
-            if len(win_trace) == 0:
-                event_times_by_neuron.append(np.array([]))
-                continue
+    def _centers_to_edges(v: np.ndarray) -> np.ndarray:
+        v = np.asarray(v, dtype=np.float64).reshape(-1)
+        if v.size == 1:
+            dv = 1.0
+            return np.array([v[0] - 0.5 * dv, v[0] + 0.5 * dv], dtype=np.float64)
+        mids = 0.5 * (v[:-1] + v[1:])
+        first = v[0] - 0.5 * (v[1] - v[0])
+        last = v[-1] + 0.5 * (v[-1] - v[-2])
+        return np.concatenate([[first], mids, [last]])
 
-            peaks, _ = find_peaks(
-                win_trace, 
-                distance=min_dist, 
-                prominence=0.5 * np.std(win_trace)
+    def _weighted_centroid_mm(x_mm: np.ndarray, w: np.ndarray) -> float:
+        x_mm = np.asarray(x_mm, dtype=np.float64)
+        w = np.asarray(w, dtype=np.float64)
+        denom = float(np.nansum(w))
+        if denom <= 0:
+            return np.nan
+        return float(np.nansum(x_mm * w) / denom)
+
+    def _left_right_asymmetry(x_mm: np.ndarray, w: np.ndarray) -> Tuple[float, float, float]:
+        x_mm = np.asarray(x_mm, dtype=np.float64)
+        w = np.asarray(w, dtype=np.float64)
+        left = float(np.nansum(w[x_mm < 0]))
+        right = float(np.nansum(w[x_mm > 0]))
+        denom = left + right
+        asym = (right - left) / denom if denom > 0 else np.nan
+        return left, right, float(asym)
+
+    def _choose_symmetric_centerline_indices(
+        coords_m: np.ndarray,
+        y_round_decimals: int = 6,
+    ) -> Tuple[np.ndarray, Dict]:
+        """
+        Select receptors from the row nearest y=0, then enforce strict left-right
+        symmetry around x=0 by pairing receptors by radius.
+        """
+        coords = np.asarray(coords_m, dtype=np.float64)
+        if coords.ndim != 2 or coords.shape[1] != 2:
+            raise ValueError(f"receptor_coords_m must have shape (N, 2), got {coords.shape}")
+
+        y_round = np.round(coords[:, 1], y_round_decimals)
+        unique_y = np.unique(y_round)
+        center_y = unique_y[np.argmin(np.abs(unique_y))]
+
+        row_idx = np.where(np.isclose(y_round, center_y, atol=10 ** (-y_round_decimals)))[0]
+        row_idx = row_idx[np.argsort(coords[row_idx, 0])]
+        x_row_mm = coords[row_idx, 0] * 1000.0
+
+        if row_idx.size < 3:
+            raise RuntimeError(f"Not enough receptors on centerline row: {row_idx.size}")
+
+        dx_mm = np.diff(x_row_mm)
+        median_dx_mm = float(np.median(np.abs(dx_mm))) if dx_mm.size > 0 else 2.0
+        zero_tol_mm = 0.55 * median_dx_mm
+
+        left_local = np.where(x_row_mm < -0.5 * zero_tol_mm)[0]
+        right_local = np.where(x_row_mm > 0.5 * zero_tol_mm)[0]
+        center_local = int(np.argmin(np.abs(x_row_mm)))
+        has_center = abs(float(x_row_mm[center_local])) <= zero_tol_mm
+
+        left_near = left_local[np.argsort(np.abs(x_row_mm[left_local]))]
+        right_near = right_local[np.argsort(np.abs(x_row_mm[right_local]))]
+        n_pairs = int(min(len(left_near), len(right_near)))
+
+        if n_pairs <= 0:
+            raise RuntimeError("No symmetric receptor pairs found on centerline.")
+
+        left_keep = left_near[:n_pairs]
+        right_keep = right_near[:n_pairs]
+
+        chosen_local = list(left_keep)
+        if has_center:
+            chosen_local.append(center_local)
+        chosen_local.extend(list(right_keep))
+        chosen_local = np.array(sorted(set(chosen_local), key=lambda k: x_row_mm[k]), dtype=int)
+
+        selected_idx = row_idx[chosen_local]
+        x_sel_mm = coords[selected_idx, 0] * 1000.0
+
+        diag = {
+            'center_y_mm': float(center_y * 1000.0),
+            'row_count': int(row_idx.size),
+            'selected_count': int(selected_idx.size),
+            'has_center': bool(has_center),
+            'nearest_center_x_mm': float(x_row_mm[center_local]),
+            'selected_x_mm': x_sel_mm.copy(),
+            'median_dx_mm': float(median_dx_mm),
+        }
+        return selected_idx, diag
+
+    def _phase_fold_map(signal_xt: np.ndarray, t_rel_ms: np.ndarray, period_ms: float, n_bins: int) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Phase-fold signal_xt over one modulation cycle.
+        signal_xt shape: (Nx, Nt)
+        returns:
+            folded_map shape: (Nx, n_bins)
+            phase_centers_ms shape: (n_bins,)
+        """
+        signal_xt = np.asarray(signal_xt, dtype=np.float64)
+        t_rel_ms = np.asarray(t_rel_ms, dtype=np.float64)
+
+        phase_edges = np.linspace(0.0, period_ms, n_bins + 1)
+        phase_centers = 0.5 * (phase_edges[:-1] + phase_edges[1:])
+
+        phase = np.mod(t_rel_ms, period_ms)
+        # Put phase==period exactly into last bin safely
+        bin_idx = np.floor(phase / period_ms * n_bins).astype(int)
+        bin_idx = np.clip(bin_idx, 0, n_bins - 1)
+
+        folded = np.full((signal_xt.shape[0], n_bins), np.nan, dtype=np.float64)
+        counts = np.bincount(bin_idx, minlength=n_bins)
+
+        print(f"[DEBUG][FIG3-FINAL] phase-fold counts | min={counts.min()}, max={counts.max()}, mean={counts.mean():.3f}")
+
+        for b in range(n_bins):
+            mask = bin_idx == b
+            if np.any(mask):
+                folded[:, b] = np.mean(signal_xt[:, mask], axis=1)
+
+        # Fill occasional empty bins by linear interpolation along phase
+        if np.any(~np.isfinite(folded)):
+            print("[WARN ][FIG3-FINAL] Empty phase bins detected; applying linear interpolation along phase.")
+            for i in range(folded.shape[0]):
+                row = folded[i]
+                good = np.isfinite(row)
+                if np.sum(good) >= 2:
+                    folded[i] = np.interp(np.arange(n_bins), np.where(good)[0], row[good])
+                elif np.sum(good) == 1:
+                    folded[i] = row[good][0]
+                else:
+                    folded[i] = 0.0
+
+        return folded, phase_centers
+
+    # -------------------------------------------------------------------------
+    # Precompute per method
+    # -------------------------------------------------------------------------
+    cache = {}
+    all_values = []
+    all_profiles = []
+    global_abs_x_mm = 0.0
+
+    for method in METHOD_ORDER:
+        print("\n" + "-" * 110)
+        print(f"[DEBUG][FIG3-FINAL][{method}] START")
+        print("-" * 110)
+
+        method_data = kwave[method]
+        coords = np.asarray(population[method]['receptor_coords_m'], dtype=np.float64)
+
+        selected_idx, diag = _choose_symmetric_centerline_indices(coords)
+        line_coords = coords[selected_idx]
+        x_mm = line_coords[:, 0] * 1000.0
+        global_abs_x_mm = max(global_abs_x_mm, float(np.max(np.abs(x_mm))))
+
+        print(f"[DEBUG][FIG3-FINAL][{method}] centerline y ~= {diag['center_y_mm']:.3f} mm")
+        print(f"[DEBUG][FIG3-FINAL][{method}] selected count = {diag['selected_count']}")
+        print(f"[DEBUG][FIG3-FINAL][{method}] nearest center x = {diag['nearest_center_x_mm']:.3f} mm")
+        print(f"[DEBUG][FIG3-FINAL][{method}] selected x_mm = {np.array2string(diag['selected_x_mm'], precision=2, separator=', ')}")
+
+        # Time window: last 15 ms, but exclude duplicated endpoint at exactly t_end
+        t_ms_full = np.asarray(method_data['t'], dtype=np.float64) * 1000.0
+        t_end = float(t_ms_full.max())
+        window_mask = (t_ms_full >= (t_end - RASTER_DURATION_MS - 0.5 * dt_ms)) & (t_ms_full < (t_end - 0.5 * dt_ms))
+        t_win_ms = t_ms_full[window_mask]
+        t_rel_ms = t_win_ms - t_win_ms[0]
+
+        print(f"[DEBUG][FIG3-FINAL][{method}] window samples = {t_rel_ms.size}")
+        print(f"[DEBUG][FIG3-FINAL][{method}] window range = [{t_win_ms.min():.6f}, {t_win_ms.max():.6f}] ms")
+        print(f"[DEBUG][FIG3-FINAL][{method}] relative range = [{t_rel_ms.min():.6f}, {t_rel_ms.max():.6f}] ms")
+
+        dyn = compute_dynamic_components(method_data)
+
+        integrator = CoherentIntegrator(
+            method_data['roi_x'],
+            method_data['roi_y'],
+            line_coords,
+            SHEAR_SPEED,
+            LAMBDA_SPACE,
+            dt,
+        )
+
+        # Signed, band-passed component drives
+        spike_array = np.asarray(population[method]['spikes'])
+        if spike_array.ndim != 3 or spike_array.shape[0] != len(ORTHO_COMPONENTS):
+            raise RuntimeError(
+                f"Unexpected spike array shape for {method}: {spike_array.shape}; "
+                f"expected ({len(ORTHO_COMPONENTS)}, N_receptors, N_time)"
             )
-            
-            if len(peaks) > 0:
-                event_times_ms = t_ms_full[window_mask][peaks] - T_start_ms
-                event_times_by_neuron.append(event_times_ms)
-            else:
-                event_times_by_neuron.append(np.array([]))
-        
-        ROI_RADIUS = 6.0 
-        center_mask = np.abs(x_mm) <= ROI_RADIUS
-        center_indices = np.where(center_mask)[0]
-        
-        absolute_phases = []
-        
-        for local_i in center_indices:
-            t_ev_ms_rel = event_times_by_neuron[local_i]
-            if len(t_ev_ms_rel) == 0:
-                continue
-                
-            # Convert to seconds relative to start of window + start of window offset
-            t_ev_sec = t_ev_ms_rel / 1000.0 + T_start_ms / 1000.0
-            
-            x_i_m = coords[selected[local_i], 0]
-            
-            # Delay compensation: t' = t - x/c
-            t_comp = t_ev_sec - x_i_m / SHEAR_SPEED
-            
-            ph = (2.0 * np.pi * CARRIER_FREQ * t_comp) % (2.0 * np.pi)
-            absolute_phases.extend(ph)
-
-        # Calculate Group VS
-        if len(absolute_phases) > 0:
-            complex_ph = np.exp(1j * np.array(absolute_phases))
-            local_vs = float(np.abs(np.mean(complex_ph)))
-            mean_angle = np.angle(np.mean(complex_ph))
-        else:
-            local_vs = 0.0
-            mean_angle = 0.0
-            
-        # Plot Histogram (aligned to mean angle = 0 for visualization)
-        phases_array = np.array(absolute_phases)
-        if len(phases_array) > 0:
-            phases_plot = (phases_array - mean_angle) % (2.0 * np.pi)
-        else:
-            phases_plot = np.array([])
-            
-        n_bins = 24
-        bin_width = 2.0 * np.pi / n_bins
-
-        if len(phases_plot) > 0:
-            bin_indices = np.floor(phases_plot / bin_width).astype(int) % n_bins
-            counts = np.bincount(bin_indices, minlength=n_bins).astype(float)
-            if counts.max() > 0:
-                counts = counts / counts.max()
-
-            bin_centers = np.arange(n_bins) * bin_width + bin_width / 2.0
-            ax_polar.bar(bin_centers, counts, width=bin_width, bottom=0.0, align='center',
-                         color=METHOD_COLORS.get(method, '#333333'), alpha=0.85, edgecolor='white', linewidth=0.5, zorder=5)
-        
-        ax_polar.set_theta_zero_location('N')
-        ax_polar.set_theta_direction(-1)
-        
-        # Annotate VS
-        if local_vs > 0.01:
-            ax_polar.annotate("",
-                xy=(0, local_vs), xytext=(0, 0),
-                arrowprops=dict(arrowstyle="-|>", facecolor='black', edgecolor='black', lw=3.0, mutation_scale=25), zorder=10
+        if spike_array.shape[1] != coords.shape[0]:
+            raise RuntimeError(
+                f"Spike receptor count mismatch for {method}: "
+                f"expected {coords.shape[0]}, got {spike_array.shape[1]}"
             )
 
-        ax_polar.set_ylim(0, 1.0)
-        ax_polar.set_yticks([0.25, 0.5, 0.75, 1.0])
-        ax_polar.set_yticklabels(['', '0.5', '', '1.0'], fontsize=12, color='0.4')
-        ax_polar.set_xticks(np.arange(0, 2.0 * np.pi, np.pi / 4.0))
-        # Labels relative to aligned mean
-        ax_polar.set_xticklabels(['0°', '+45°', '+90°', '+135°', '±180°', '-135°', '-90°', '-45°'], fontsize=14, zorder=1000)
-        ax_polar.tick_params(axis='x', pad=-35, size=14)
-        
-        ax_polar.set_title(f'Central ROI (delay-compensated 200Hz VS) = {local_vs:.3f}', va='bottom', fontweight='bold', pad=20)
+        component_weight_maps = []
+        component_profiles = []
+        for comp_idx, comp in enumerate(ORTHO_COMPONENTS):
+            m_comp = integrator.integrate(dyn[comp])
+            u_comp = apply_pacinian_filter(m_comp, dt)
+            u_win = u_comp[:, window_mask]
+            r_comp = np.maximum(u_win, 0.0)
 
-    fig.subplots_adjust(hspace=0.4)
-    save_figure(fig, OUTPUT_DIR / 'Figure_Neural_3_Spike_Raster_Phase_Locking')
-    
-    print("="*85)
-    print("[DEBUG] END PLOT_FIGURE_3 ANALYSIS")
-    print("="*85 + "\n")
+            spike_comp = spike_array[comp_idx]
+            vs_all = np.array(
+                [compute_vector_strength_from_spike_train(spike_comp[idx], dt, CARRIER_FREQ) for idx in range(spike_comp.shape[0])],
+                dtype=np.float64,
+            )
+            vs_sel = vs_all[selected_idx]
+            weight_map = r_comp * vs_sel[:, None]
+            weight_profile = np.max(weight_map, axis=1)
+
+            component_weight_maps.append(weight_map)
+            component_profiles.append(weight_profile)
+
+            _print_stats(f"[DEBUG][FIG3-FINAL][{method}][{comp}] u_comp win", u_win)
+            _print_stats(f"[DEBUG][FIG3-FINAL][{method}][{comp}] vs_sel", vs_sel)
+            _print_stats(f"[DEBUG][FIG3-FINAL][{method}][{comp}] weight_map=r*VS", weight_map)
+            _print_stats(f"[DEBUG][FIG3-FINAL][{method}][{comp}] weight_profile=max_t(r*VS)", weight_profile)
+
+        component_weight_maps = np.stack(component_weight_maps, axis=0)  # (3, Nx, Nt_win)
+        component_profiles = np.stack(component_profiles, axis=0)        # (3, Nx)
+
+        final_weight_map = np.maximum.reduce(component_weight_maps, axis=0)  # (Nx, Nt_win)
+        final_profile = np.max(component_profiles, axis=0)                   # (Nx,)
+
+        _print_stats(f"[DEBUG][FIG3-FINAL][{method}] final_weight_map win", final_weight_map)
+        _print_stats(f"[DEBUG][FIG3-FINAL][{method}] final_profile w_i", final_profile)
+
+        # Fold 15 ms -> 1 cycle (5 ms)
+        folded_map, phase_centers_ms = _phase_fold_map(
+            signal_xt=final_weight_map,
+            t_rel_ms=t_rel_ms,
+            period_ms=cycle_ms,
+            n_bins=n_phase_bins,
+        )
+
+        centroid_mm = _weighted_centroid_mm(x_mm, final_profile)
+        left_sum, right_sum, asym = _left_right_asymmetry(x_mm, final_profile)
+
+        print(f"[DEBUG][FIG3-FINAL][{method}] folded_map shape = {folded_map.shape}")
+        _print_stats(f"[DEBUG][FIG3-FINAL][{method}] folded_map", folded_map)
+        _print_stats(f"[DEBUG][FIG3-FINAL][{method}] final_profile", final_profile)
+        print(
+            f"[DEBUG][FIG3-FINAL][{method}] final_profile centroid = {centroid_mm:.6f} mm | "
+            f"left={left_sum:.6f}, right={right_sum:.6f}, asym={asym:.6f}"
+        )
+
+        # Optional weak sanity check against stored weights
+        weights_all = np.asarray(population[method]['weights'], dtype=np.float64).reshape(-1)
+        if weights_all.size == coords.shape[0]:
+            weights_sel = weights_all[selected_idx]
+            if np.std(final_profile) > 0 and np.std(weights_sel) > 0:
+                try:
+                    r, p = stats.pearsonr(final_profile, weights_sel)
+                    print(f"[DEBUG][FIG3-FINAL][{method}] corr(final_profile, stored_weights_sel) = r={r:.6f}, p={p:.6g}")
+                except Exception as e:
+                    print(f"[WARN ][FIG3-FINAL][{method}] correlation failed: {repr(e)}")
+
+        cache[method] = {
+            'x_mm': x_mm,
+            'phase_centers_ms': phase_centers_ms,
+            'folded_map': folded_map,
+            'final_profile': final_profile,
+        }
+
+        all_values.append(folded_map.ravel())
+        all_profiles.append(final_profile.ravel())
+
+    # -------------------------------------------------------------------------
+    # Global scale
+    # -------------------------------------------------------------------------
+    all_values = np.concatenate(all_values)
+    all_profiles = np.concatenate(all_profiles)
+
+    vmax = float(np.nanpercentile(all_values, 99.5))
+    if not np.isfinite(vmax) or vmax <= 0:
+        vmax = float(np.nanmax(all_values))
+    if vmax <= 0:
+        vmax = 1.0
+
+    profile_max = float(np.nanpercentile(all_profiles, 99.5))
+    if not np.isfinite(profile_max) or profile_max <= 0:
+        profile_max = float(np.nanmax(all_profiles))
+    if profile_max <= 0:
+        profile_max = 1.0
+
+    print("\n" + "=" * 110)
+    print("[DEBUG][FIG3-FINAL] GLOBAL SUMMARY")
+    print("=" * 110)
+    _print_stats("[DEBUG][FIG3-FINAL] all folded values", all_values)
+    _print_stats("[DEBUG][FIG3-FINAL] all mean profiles", all_profiles)
+    print(f"[DEBUG][FIG3-FINAL] global_abs_x_mm = {global_abs_x_mm:.6f}")
+    print(f"[DEBUG][FIG3-FINAL] heatmap vmax = {vmax:.6f}")
+    print(f"[DEBUG][FIG3-FINAL] profile_max = {profile_max:.6f}")
+    print("=" * 110)
+
+    # -------------------------------------------------------------------------
+    # Plot
+    # -------------------------------------------------------------------------
+    fig = plt.figure(figsize=(12.8, 14.0))
+    gs = gridspec.GridSpec(
+        len(METHOD_ORDER),
+        3,
+        width_ratios=[6.8, 2.0, 0.18],
+        hspace=0.10,
+        wspace=0.12,
+    )
+
+    heat_axes = []
+    profile_axes = []
+    mappable = None
+
+    for row, method in enumerate(METHOD_ORDER):
+        ax_h = fig.add_subplot(
+            gs[row, 0],
+            sharex=heat_axes[0] if len(heat_axes) > 0 else None,
+            sharey=heat_axes[0] if len(heat_axes) > 0 else None,
+        )
+        ax_p = fig.add_subplot(
+            gs[row, 1],
+            sharex=profile_axes[0] if len(profile_axes) > 0 else None,
+            sharey=ax_h,
+        )
+
+        heat_axes.append(ax_h)
+        profile_axes.append(ax_p)
+
+        x_mm = cache[method]['x_mm']
+        folded_map = cache[method]['folded_map']
+        phase_centers_ms = cache[method]['phase_centers_ms']
+        final_profile = cache[method]['final_profile']
+
+        x_edges = _centers_to_edges(x_mm)
+        phase_edges = np.linspace(0.0, cycle_ms, len(phase_centers_ms) + 1)
+
+        mappable = ax_h.pcolormesh(
+            phase_edges,
+            x_edges,
+            folded_map,
+            shading='auto',
+            cmap='magma',
+            vmin=0.0,
+            vmax=vmax,
+        )
+
+        ax_h.axhline(0.0, color='white', linestyle='--', lw=1.0, alpha=0.55)
+        ax_h.set_ylim(-global_abs_x_mm, global_abs_x_mm)
+        ax_h.grid(False)
+
+        ax_h.text(
+            0.015, 0.92, method,
+            transform=ax_h.transAxes,
+            ha='left', va='top',
+            color='white',
+            fontsize=LEGEND_SIZE,
+            fontweight='bold',
+            bbox=dict(facecolor='black', alpha=0.20, edgecolor='none', pad=2.5)
+        )
+
+        if row < len(METHOD_ORDER) - 1:
+            ax_h.tick_params(labelbottom=False)
+        else:
+            ax_h.set_xlabel('Phase within one 200 Hz cycle [ms]', fontweight='bold')
+
+        ax_p.plot(final_profile, x_mm, color=METHOD_COLORS[method], lw=LINE_WIDTH)
+        ax_p.fill_betweenx(x_mm, 0.0, final_profile, color=METHOD_COLORS[method], alpha=0.22)
+        ax_p.axhline(0.0, color='0.35', linestyle='--', lw=0.9, alpha=0.60)
+        ax_p.set_xlim(0.0, profile_max * 1.05)
+        ax_p.grid(True, axis='x', linestyle='--', alpha=0.35)
+        ax_p.tick_params(labelleft=False)
+
+        if row < len(METHOD_ORDER) - 1:
+            ax_p.tick_params(labelbottom=False)
+        else:
+            ax_p.set_xlabel('Final readout weight $w_i = \max(w_{xy}, w_{xz}, w_{yz})$ [a.u.]', fontweight='bold')
+
+        if row == 0:
+            ax_h.set_title(
+                r'Phase-folded centerline weight map $r(x,\phi) \times VS_{200\,\mathrm{Hz}}$',
+                fontweight='bold',
+                pad=10,
+            )
+            ax_p.set_title(
+                'Final readout\n'+r'$w_i = \max(w_{xy}, w_{xz}, w_{yz})$',
+                fontweight='bold',
+                pad=10,
+            )
+
+    cax = fig.add_subplot(gs[:, 2])
+    cbar = fig.colorbar(mappable, cax=cax)
+    cbar.set_label(r'Phase-folded weight $r \times VS_{200\,\mathrm{Hz}}$ [a.u.]', fontweight='bold')
+    cbar.outline.set_linewidth(1.0)
+
+    fig.text(
+        0.02, 0.5,
+        'Centerline receptor position x [mm]',
+        rotation=90,
+        va='center',
+        ha='center',
+        fontweight='bold'
+    )
+
+    save_figure(fig, OUTPUT_DIR / 'Figure_Neural_3_PhaseFolded_Centerline_DriveMagnitude')
+
+    print("\n" + "=" * 110)
+    print("[DEBUG][FIG3-FINAL] END | Figure 3 saved successfully")
+    print("=" * 110 + "\n")
 
 # =============================================================================
 # Figure 4
@@ -795,7 +1044,7 @@ def plot_figure5(data: Dict) -> None:
     
     # 使用 gridspec_kw 控制子图间水平间距 (wspace)
     # 去除 constrained_layout=True 以便更自由地控制布局，wspace=0.05 表示子图间距为子图宽度的 5%
-    fig, axes = plt.subplots(1, 5, figsize=(25, 4), gridspec_kw={'wspace': 0.2})
+    fig, axes = plt.subplots(1, 5, figsize=(30, 4), gridspec_kw={'wspace': 0.3})
     
     for ax, method, sm in zip(axes, METHOD_ORDER, high_res_maps):
         
