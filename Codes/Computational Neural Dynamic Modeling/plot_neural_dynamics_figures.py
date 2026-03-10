@@ -227,6 +227,7 @@ def compute_vector_strength_from_spike_times(spike_times_s: np.ndarray, f0: floa
     return float(np.abs(np.mean(phases)))
 
 
+<<<<<<< HEAD
 def compute_vector_strength_from_spike_train(spike_train: np.ndarray, dt: float, f0: float = CARRIER_FREQ) -> float:
     spike_train = np.asarray(spike_train)
     if spike_train.size == 0:
@@ -238,6 +239,8 @@ def compute_vector_strength_from_spike_train(spike_train: np.ndarray, dt: float,
     return compute_vector_strength_from_spike_times(spike_times_s, f0)
 
 
+=======
+>>>>>>> 1aab52592594dc4dde9dbed65fe7e1e4792c83ce
 # =============================================================================
 # Analysis data assembly
 # =============================================================================
@@ -478,6 +481,7 @@ def plot_figure2(data: Dict) -> None:
     ax.legend(frameon=True, ncol=1, loc='lower right')
     save_figure(fig, OUTPUT_DIR / 'Figure_Neural_2_Frequency_Fidelity')
 
+<<<<<<< HEAD
 def plot_figure3(data: Dict) -> None:
     """
     Figure 3 | Phase-folded centerline effective neural-drive magnitude.
@@ -947,6 +951,239 @@ def plot_figure3(data: Dict) -> None:
     print("\n" + "=" * 110)
     print("[DEBUG][FIG3-FINAL] END | Figure 3 saved successfully")
     print("=" * 110 + "\n")
+=======
+
+
+def plot_figure3(data: Dict) -> None:
+    print("\n" + "="*85)
+    print("[DEBUG] STARTING PLOT_FIGURE_3 (3D POOLED FIRST-PRINCIPLE DRIVEN)")
+    print("="*85)
+    
+    population = data['population']
+    fig = plt.figure(figsize=(13, 14))
+    outer = gridspec.GridSpec(3, 2, width_ratios=[2.2, 1.0], wspace=0.15, hspace=0.4)
+
+    RASTER_COLORS = {
+        'ULM_L': '#440154',
+        'DLM_2': '#3b528b',
+        'LM_L': '#b89500'  
+    }
+
+    for row, method in enumerate(RASTER_METHODS):
+        print(f"\n---> [DEBUG] ================= Analyzing Method: {method} =================")
+        method_pop = population[method]
+        coords = method_pop['receptor_coords_m']
+        
+        # 1. 提取中心水平切线
+        center_y = coords[np.argmin(np.abs(coords[:, 1])), 1]
+        line_idx = np.where(np.isclose(coords[:, 1], center_y, atol=1e-6))[0]
+        sorted_line = line_idx[np.argsort(coords[line_idx, 0])]
+        
+        if len(sorted_line) > N_RASTER_NEURONS:
+            start = (len(sorted_line) - N_RASTER_NEURONS) // 2
+            selected = sorted_line[start:start+N_RASTER_NEURONS]
+        else:
+            selected = sorted_line
+            
+        x_mm = coords[selected, 0] * 1000.0  
+        print(f"[DEBUG - SPACE] Baseline Y={center_y*1000:.3f} mm. X bounds: [{x_mm.min():.2f}, {x_mm.max():.2f}] mm")
+        
+        # 2. RASTER PLOT DATA (Original Spike Pooling Logic)
+        all_spikes = method_pop['spikes'][:, selected, :]  # Shape: (3, N_neurons, N_time)
+        spikes_pooled = np.any(all_spikes, axis=0)         # Shape: (N_neurons, N_time)
+        print(f"[DEBUG - PHYSICS] Pooled spikes across xy, xz, yz components. Shape: {spikes_pooled.shape}")
+
+        # 3. 时间轴对齐
+        t_vec_full = np.asarray(data['kwave']['methods'][method]['t'], dtype=np.float64)
+        n_time = spikes_pooled.shape[1]
+        t_trim_sec = t_vec_full[-n_time:]  
+        t_trim_ms = t_trim_sec * 1000.0
+        
+        T_end_ms = float(t_trim_ms[-1])
+        T_start_ms = T_end_ms - RASTER_DURATION_MS
+
+        # ==========================================
+        # 子图 1：XT-Spacetime Raster Plot
+        # ==========================================
+        ax_raster = fig.add_subplot(outer[row, 0])
+        y_range = float(x_mm.max() - x_mm.min())
+        dy = y_range / max(1, len(x_mm) - 1)
+        
+        total_raw_spikes_in_win = 0
+            
+        for n_idx in range(len(selected)):
+            spike_idx = np.where(spikes_pooled[n_idx])[0]
+            if len(spike_idx) == 0: continue
+                
+            spike_times_ms_full = t_trim_ms[spike_idx]
+            
+            # --- 核心科学修正：单神经轴突全局绝对不应期 (2.0 ms) ---
+            axon_filtered_spikes = []
+            last_t = -999.0
+            for t in spike_times_ms_full:
+                if t - last_t > 2.0:  # 严格锁定 2.0 ms
+                    axon_filtered_spikes.append(t)
+                    last_t = t
+            spike_times_ms_full = np.array(axon_filtered_spikes)
+            # --------------------------------------------------------
+            valid_raw = (spike_times_ms_full >= T_start_ms) & (spike_times_ms_full <= T_end_ms)
+            spike_times_win = spike_times_ms_full[valid_raw] - T_start_ms
+            
+            total_raw_spikes_in_win += np.sum(valid_raw)
+            
+            if len(spike_times_win) > 0:
+                y_pos = float(x_mm[n_idx])
+                ax_raster.vlines(x=spike_times_win, ymin=y_pos - dy * 0.45, ymax=y_pos + dy * 0.45, 
+                                 color=RASTER_COLORS[method], lw=1.5, alpha=0.9, zorder=3)
+                
+        print(f"[DEBUG - RASTER] Pooled spikes plotted in window -> RAW: {total_raw_spikes_in_win}")
+                
+        ax_raster.set_xlim(0, float(RASTER_DURATION_MS))
+        view_limit = 12.0
+        ax_raster.set_ylim(-view_limit, view_limit)
+        ax_raster.set_ylabel('Position X [mm]', fontweight='bold')
+        
+        if row == len(RASTER_METHODS) - 1:
+            ax_raster.set_xlabel('Time [ms]', fontweight='bold')
+        else:
+            ax_raster.tick_params(labelbottom=False)
+            
+        ax_raster.grid(True, linestyle='--', alpha=0.4, zorder=0)
+        ax_raster.set_title(f'{method} | XT spike raster', fontweight='bold', loc='left', pad=15)
+
+        # ==========================================
+        # 子图 2：局部感受野受体级频率保真度 (Delay-compensated Group Event VS)
+        # ==========================================
+        ax_polar = fig.add_subplot(outer[row, 1], projection='polar')
+        
+        # --- Compute pooled analog drive for polar plot ---
+        method_data = data['kwave']['methods'][method]
+        dyn_all = compute_dynamic_components(method_data)
+        
+        integrator = CoherentIntegrator(
+            method_data['roi_x'], 
+            method_data['roi_y'], 
+            coords[selected], 
+            SHEAR_SPEED, 
+            LAMBDA_SPACE, 
+            data['kwave']['dt']
+        )
+        
+        u_components = []
+        for comp in ORTHO_COMPONENTS:
+            m_comp = integrator.integrate(dyn_all[comp])
+            u_comp = apply_pacinian_filter(m_comp, data['kwave']['dt'])
+            u_components.append(np.maximum(u_comp, 0.0))
+        
+        u_pool = np.maximum.reduce(u_components)   # shape: (N_selected, Nt)
+
+        # Extract events
+        dt = data['kwave']['dt']
+        min_dist = max(1, int(round(0.002 / dt)))
+        
+        # Align u_pool time vector
+        t_ms_full = method_data['t'] * 1000.0
+        window_mask = (t_ms_full >= T_start_ms) & (t_ms_full <= T_end_ms)
+        
+        event_times_by_neuron = []
+        for i in range(u_pool.shape[0]):
+            trace = u_pool[i]
+            win_trace = trace[window_mask]
+            
+            if len(win_trace) == 0:
+                event_times_by_neuron.append(np.array([]))
+                continue
+
+            peaks, _ = find_peaks(
+                win_trace, 
+                distance=min_dist, 
+                prominence=0.5 * np.std(win_trace)
+            )
+            
+            if len(peaks) > 0:
+                event_times_ms = t_ms_full[window_mask][peaks] - T_start_ms
+                event_times_by_neuron.append(event_times_ms)
+            else:
+                event_times_by_neuron.append(np.array([]))
+        
+        ROI_RADIUS = 6.0 
+        center_mask = np.abs(x_mm) <= ROI_RADIUS
+        center_indices = np.where(center_mask)[0]
+        
+        absolute_phases = []
+        
+        for local_i in center_indices:
+            t_ev_ms_rel = event_times_by_neuron[local_i]
+            if len(t_ev_ms_rel) == 0:
+                continue
+                
+            # Convert to seconds relative to start of window + start of window offset
+            t_ev_sec = t_ev_ms_rel / 1000.0 + T_start_ms / 1000.0
+            
+            x_i_m = coords[selected[local_i], 0]
+            
+            # Delay compensation: t' = t - x/c
+            t_comp = t_ev_sec - x_i_m / SHEAR_SPEED
+            
+            ph = (2.0 * np.pi * CARRIER_FREQ * t_comp) % (2.0 * np.pi)
+            absolute_phases.extend(ph)
+
+        # Calculate Group VS
+        if len(absolute_phases) > 0:
+            complex_ph = np.exp(1j * np.array(absolute_phases))
+            local_vs = float(np.abs(np.mean(complex_ph)))
+            mean_angle = np.angle(np.mean(complex_ph))
+        else:
+            local_vs = 0.0
+            mean_angle = 0.0
+            
+        # Plot Histogram (aligned to mean angle = 0 for visualization)
+        phases_array = np.array(absolute_phases)
+        if len(phases_array) > 0:
+            phases_plot = (phases_array - mean_angle) % (2.0 * np.pi)
+        else:
+            phases_plot = np.array([])
+            
+        n_bins = 24
+        bin_width = 2.0 * np.pi / n_bins
+
+        if len(phases_plot) > 0:
+            bin_indices = np.floor(phases_plot / bin_width).astype(int) % n_bins
+            counts = np.bincount(bin_indices, minlength=n_bins).astype(float)
+            if counts.max() > 0:
+                counts = counts / counts.max()
+
+            bin_centers = np.arange(n_bins) * bin_width + bin_width / 2.0
+            ax_polar.bar(bin_centers, counts, width=bin_width, bottom=0.0, align='center',
+                         color=METHOD_COLORS.get(method, '#333333'), alpha=0.85, edgecolor='white', linewidth=0.5, zorder=5)
+        
+        ax_polar.set_theta_zero_location('N')
+        ax_polar.set_theta_direction(-1)
+        
+        # Annotate VS
+        if local_vs > 0.01:
+            ax_polar.annotate("",
+                xy=(0, local_vs), xytext=(0, 0),
+                arrowprops=dict(arrowstyle="-|>", facecolor='black', edgecolor='black', lw=3.0, mutation_scale=25), zorder=10
+            )
+
+        ax_polar.set_ylim(0, 1.0)
+        ax_polar.set_yticks([0.25, 0.5, 0.75, 1.0])
+        ax_polar.set_yticklabels(['', '0.5', '', '1.0'], fontsize=12, color='0.4')
+        ax_polar.set_xticks(np.arange(0, 2.0 * np.pi, np.pi / 4.0))
+        # Labels relative to aligned mean
+        ax_polar.set_xticklabels(['0°', '+45°', '+90°', '+135°', '±180°', '-135°', '-90°', '-45°'], fontsize=14, zorder=1000)
+        ax_polar.tick_params(axis='x', pad=-35, size=14)
+        
+        ax_polar.set_title(f'Central ROI (delay-compensated 200Hz VS) = {local_vs:.3f}', va='bottom', fontweight='bold', pad=20)
+
+    fig.subplots_adjust(hspace=0.4)
+    save_figure(fig, OUTPUT_DIR / 'Figure_Neural_3_Spike_Raster_Phase_Locking')
+    
+    print("="*85)
+    print("[DEBUG] END PLOT_FIGURE_3 ANALYSIS")
+    print("="*85 + "\n")
+>>>>>>> 1aab52592594dc4dde9dbed65fe7e1e4792c83ce
 
 # =============================================================================
 # Figure 4
@@ -1044,7 +1281,11 @@ def plot_figure5(data: Dict) -> None:
     
     # 使用 gridspec_kw 控制子图间水平间距 (wspace)
     # 去除 constrained_layout=True 以便更自由地控制布局，wspace=0.05 表示子图间距为子图宽度的 5%
+<<<<<<< HEAD
     fig, axes = plt.subplots(1, 5, figsize=(30, 4), gridspec_kw={'wspace': 0.3})
+=======
+    fig, axes = plt.subplots(1, 5, figsize=(25, 4), gridspec_kw={'wspace': 0.2})
+>>>>>>> 1aab52592594dc4dde9dbed65fe7e1e4792c83ce
     
     for ax, method, sm in zip(axes, METHOD_ORDER, high_res_maps):
         
