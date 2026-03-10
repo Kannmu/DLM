@@ -148,6 +148,7 @@ Nature/Science 旗下的所有适合的子刊。
   - 包含 1Hz 心跳灯 (`LED0`)、校准模式指示灯 (`LED1`) 以及 Demo 模式状态指示灯 (`LED2`)。
 
 
+## 论文内容
 
 ### 实验1
 
@@ -242,43 +243,69 @@ Nature/Science 旗下的所有适合的子刊。
 **1. 强度感知 (Intensity Preference)**
 
 - **评分排序 (BT Score ± SE)**:
-  - **ULM_L**: 0.72 ± 0.12 (95% CI: [0.48, 0.96]) —— **表现最佳**
-  - **DLM_2**: 0.26 ± 0.12
-  - **DLM_3**: 0.07 ± 0.12
-  - **LM_C**: -0.14 ± 0.12
-  - **LM_L**: -0.91 ± 0.13
+  - **ULM_L**: 0.74 ± 0.11 (95% CI: [0.52, 0.97]) —— **表现最佳**
+  - **DLM_2**: 0.34 ± 0.11
+  - **DLM_3**: -0.04 ± 0.11
+  - **LM_C**: -0.18 ± 0.11
+  - **LM_L**: -0.86 ± 0.12
 - **显著性差异 (Wald Test)**:
   - **ULM_L**: 显著优于所有其他方法。
-    - vs **DLM_2**: 差异显著 ($p=0.012$, \*)，优势比 (Odds Ratio, OR) 为 1.59（即 **ULM_L** 被选中的概率约是 **DLM_2** 的 1.6 倍）。
+    - vs **DLM_2**: 差异显著 ($p=0.019$, \*)，优势比 (Odds Ratio, OR) 为 1.50。
     - vs **DLM_3**, **LM_C**, **LM_L**: 差异极显著 ($p < 0.001$, \*\*\*)。
   - **DLM_2**:
-    - 显著优于 **LM_C** ($p=0.031$, \*) 和 **LM_L** ($p < 0.001$, \*\*\*)。
-    - 与 **DLM_3** 差异不显著 ($p=0.319$)。
+    - 显著优于 **LM_C** ($p=0.003$, \*\*) 和 **LM_L** ($p < 0.001$, \*\*\*)。
+    - 显著优于 **DLM_3** ($p=0.029$, \*)。
   - **LM_L**: 显著弱于除 **LM_C** 以外的所有方法 ($p < 0.001$)，与 **LM_C** 相比也显著较弱 ($p < 0.001$)。
-- **结论**: **ULM_L** 在呈现强度信息方面表现最佳，DLM_2 次之。ULM_L 能够提供比 **DLM_2** 更强的强度感知，且两者均显著优于传统的 LM 方法。
+- **结论**: **ULM_L** 在呈现强度信息方面表现最佳，DLM_2 次之。ULM_L 能够提供比 **DLM_2** 更强的强度感知，且两者均显著优于传统的 LM 方法。值得注意的是，**DLM_2** 此次显著优于 **DLM_3**。
 
 **2. 空间清晰度 (Spatial Clarity Preference)**
 
 - **评分排序 (BT Score ± SE)**:
-  - **ULM_L**: 0.32 ± 0.11 (95% CI: [0.10, 0.54]) —— **表现最佳**
-  - **DLM_2**: 0.11 ± 0.11
-  - **DLM_3**: -0.06 ± 0.11
-  - **LM_C**: -0.09 ± 0.11
-  - **LM_L**: -0.28 ± 0.11
+  - **ULM_L**: 0.24 ± 0.10 (95% CI: [0.04, 0.44]) —— **表现最佳**
+  - **DLM_2**: 0.11 ± 0.10
+  - **DLM_3**: -0.04 ± 0.10
+  - **LM_C**: -0.08 ± 0.10
+  - **LM_L**: -0.23 ± 0.10
 - **显著性差异**:
   - **ULM_L**:
-    - 显著优于 **DLM_3** ($p=0.030$, \*), **LM_C** ($p=0.019$, \*) 和 **LM_L** ($p < 0.001$, \*\*\*)。
-    - 与 **DLM_2** 差异不显著 ($p=0.227$, OR=1.24)。
+    - 显著优于 **LM_L** ($p=0.005$, \*\*)。
+    - 与 **DLM_2** ($p=0.424$)、**DLM_3** ($p=0.090$) 和 **LM_C** ($p=0.052$) 差异均不显著（尽管与 **LM_C** 接近显著）。
   - **DLM_2**:
-    - 显著优于 **LM_L** ($p=0.029$, \*)。
-    - 与 **DLM_3** ($p=0.334$) 和 **LM_C** ($p=0.253$) 差异不显著。
-- **结论**: **ULM_L** 和 **DLM_2** 在空间清晰度方面表现较好。虽然 **ULM_L** 的得分略高于 DLM_2，但两者在统计上无显著差异，说明两者在提供清晰的空间线索方面能力相当，且均优于基准方法 LM_L。
+    - 显著优于 **LM_L** ($p=0.042$, \*)。
+    - 与 **DLM_3** ($p=0.369$) 和 **LM_C** ($p=0.253$) 差异不显著。
+- **结论**: **ULM_L** 在空间清晰度方面得分最高，但仅显著优于 **LM_L**。这表明在近阈值条件下，除了最差的 **LM_L** 外，其余四种方法在提供清晰的空间线索方面能力差异不大，或者受试者难以区分。
+
+**3. 反应时间 (Reaction Time)**
+
+- **分析方法**: 使用标准化对数反应时间 (Z-Log-RT) 分析受试者在成对比较任务中的决策难度。Z-Log-RT 值越高，表示决策时间越长，暗示两种刺激的主观感受越接近，区分难度越大（符号距离效应，Symbolic Distance Effect）。
+- **关键发现**:
+  - **最长决策时间**: **DLM_3 vs LM_C** (Z-Log-RT = 0.14) 和 **ULM_L vs DLM_2** (0.10)。
+    - 这与主观评分结果一致：**DLM_3** 和 **LM_C** 在强度和清晰度上的得分都非常接近，导致受试者难以抉择。
+    - **ULM_L** 和 **DLM_2** 是表现最好的两种方法，二者在清晰度上差异不显著，受试者在二者之间进行权衡时需要更长的认知加工时间。
+  - **最短决策时间**: 涉及 **LM_L** 的比较通常具有较短的反应时间（例如 **LM_C vs LM_L**, -0.07; **DLM_3 vs ULM_L**, -0.06）。
+    - 这反映了 **LM_L** 的表现显著弱于其他方法，受试者可以快速排除较差的选项并做出决定。
+- **结论**: 反应时间数据进一步佐证了主观评分的结果，揭示了不同调制方法之间感知质量的相似性结构。
 
 其他结果：
 
 1. **DLM_2** 和 **DLM_3** 产生的可以被人的听觉接收到的载波噪声明显比LM_L和LM_C更大一些。
 2. **DLM_3** 的低频噪声频率明显比DLM_2更高一些，可能由于一个周期内多个离散点切换会导致倍频。（同样倍频可能也会影响触觉生成，例如 **DLM_3** 在圆心处会产生 方向以200Hz的旋转剪切，但是剪切强度信号频率可能会由于200Hz内的每个周期刺激三次从而变成600Hz的触觉受体不敏感的频率范围内）。
 3. **LM_C** 的低频（200Hz）可听噪声几乎为0（可能由于LM_C的焦点轨迹最平滑，既没有焦点位置突变（例如DLM），也没有焦点速度方向突变（例如LM_L）。
+
+#### 实验1 结果注意
+
+实验里的“清晰度/精度”任务其实不是纯空间分辨率任务。它是近阈值超声触觉下的 2-AFC 主观判断：
+> 哪个更像一个清晰的小点？
+
+在这种条件下，人的判断很可能混合了：
+
+- detectability / 可觉察性
+- 主观强度
+- temporal stability
+- confidence / 决策把握
+- 实际空间面积线索
+
+因此，强度和精度的数据之间趋势有很明显的相关性（虽然精度得分之间的显著性差异更小一些），这个我觉得是正确合理的。因为超声触觉的绝对强度太小了，并且五种调制方法之间的相对差别也很小，因此被试很有可能在主观上觉得强度更高的刺激精度也更高（更清晰）。但是这种相关性不一定能被计算神经动力学模型所复刻。
 
 ### 仿真1
 
@@ -523,13 +550,428 @@ Nature/Science 旗下的所有适合的子刊。
 - 但是DLM_3在两个分数上都略高于LM_C（但不显著），这可能表明由于DLM_3的离散控制，每个聚焦点停留时间都较长，从而可以充分给皮肤足够时间产生响应。而LM_C方法由于是连续聚焦点移动，可能使得皮肤上每个点来不及响应，到不了最大程度的响应，从而影响效果。
 
 
+### 测量1：2D LDV 实际测量
+
+#### 测量1设计
+
+**PlaceHolder**
+
+
 
 ### 计算神经动力学模型（Computational Neural Dynamics Modeling）
 
-本研究采用一个**以 Pacinian corpuscle（PC，FAII）为主导通道的、具有机械约束的时空编码模型**，用于在 **k-Wave 物理场仿真** 与 **心理物理学主观评分** 之间建立可检验的神经生理桥梁。该模型的核心任务不是精确重建单个受体的全部微观生物力学细节，而是用**最小但机制上正确**的外周编码框架，回答本研究的两个核心现象：
+#### 计算神经动力学模型设计
 
-1. **为什么 ULM_L 在主观上同时表现出更高的强度与更高的空间清晰度；**
-2. **为什么 LM_L 会出现显著的“倍频崩溃”（frequency-doubling collapse）。**
+**PC/RAII 主导的“多通道表面波相干积分 + 频率选择 + Max-Pooling”模型**
+
+**一句话概括**
+
+把仿真1输出的皮肤内**三维时空剪切应力场**，分别通过 **Pacinian/RAII 通道主导的表面波传播延迟积分**与**RAII 频率选择滤波**，生成三个正交方向的**快适应脉冲序列**，最后通过**最大化汇聚 (Max-Pooling)** 提取每个受体的有效驱动，从**群体放电强度**预测实验1里的**强度偏好**。
+
+---
+
+##### 为什么我选这个，而不是更复杂的全皮肤四通道模型
+
+###### 1) 你的任务频段决定了主导通道
+
+你所有刺激都围绕 **200 Hz**。
+对掌侧无毛皮肤，在这个频段，**Pacinian corpuscle / Aβ RAII afferent** 是最有可能主导可觉察强度的通道，这一点有很强文献基础：
+
+- Johnson 2001
+- Handler & Ginty 2021
+- Talbot / Mountcastle / Bolanowski 系列
+- Quindlen 2016
+- Ziolkowski 2025
+
+SA1 更偏静态形状/边缘；RAI/Meissner 更偏较低频 flutter。
+你这个问题不是“完整触觉全模态重建”，而是“200 Hz 超声调制模式比较”。
+所以用**PC/RAII 主导模型**是第一性原理上最合理的降维。
+
+###### 2) 你的仿真输入不是位移压入，而是剪切应力时空场
+
+你现在手里最可靠的输入，不是经典触针压入皮肤的 indentation，而是 k-Wave 得到的：
+
+- `tau_xy`
+- `tau_xz`
+- `tau_yz`
+- `tau_roi_steady`
+
+这天然更适合一个以**剪切波传播**为中心的模型，而不是照搬 TouchSim 的整手压入模型。
+
+###### 3) 它天然不含“五种方法先验”
+
+这个模型只吃：
+
+- 时空剪切场
+- 固定的皮肤表面波速
+- 固定的 RAII 频率响应
+- 固定的快适应放电机制
+
+它**不知道**输入来自 DLM_2、DLM_3、ULM_L、LM_L 还是 LM_C。
+排序如果出来，是机制自己出来的，不是凑出来的。
+
+###### 4) 它能自然解释你最关键的现象
+
+这个模型最重要的优点是，它会自然偏好同时满足两件事的刺激：
+
+- **200 Hz 频率保真高**
+- **时空波前相干积分强**
+
+这正好对应你论文主线里的：
+
+- Frequency Fidelity
+- Spatiotemporal Coherence / Coherent Integration
+
+而这两个条件刚好是：
+
+- **ULM_L** 最强
+- **LM_L** 因倍频和方向翻转最差
+- **DLM_2** 次强
+- **DLM_3 / LM_C** 中等
+
+这不是硬编码，而是模型结构的必然偏好。
+
+---
+
+##### 模型总结构
+
+模型分为 5 个阶段，采用**并行通道积分**策略，以避免预先假设某一特定方向的剪切力占主导：
+
+###### Stage 0. 输入场定义
+
+来自仿真1的稳态 ROI 三维时空数据：
+
+- `tau_roi_steady_xy(x,y,t)`
+- `tau_roi_steady_xz(x,y,t)`
+- `tau_roi_steady_yz(x,y,t)`
+- `roi_x_vec`
+- `roi_y_vec`
+- `t_vec_steady`
+
+你**不要**把 `FFI`、`DWCI`、`tau_rms`、`tau_peak` 直接喂进模型。
+这些应该是**模型外诊断指标**，不是模型输入。
+
+---
+
+###### Stage 1. 动态分量提取
+
+对三个剪切应力分量 \(c \in \{xy, xz, yz\}\)，分别去除其时间均值（静态偏置）：
+
+\[
+\tau_{c}^{\text{dyn}}(x,y,t) = \tau_{c}(x,y,t) - \langle \tau_{c}(x,y,\cdot) \rangle_t
+\]
+
+这里只保留**动态部分**，因为 RAII/PC 对静态压入几乎不持续响应，且 Ziolkowski 2025 支持“瞬态检测由 inner core 主导”的观点。
+
+---
+
+###### Stage 2. 表面波相干积分（核心）
+
+这是整个模型最关键的一步。采用**多通道独立积分**策略。
+
+对每一个虚拟 RAII 受体 \(i\)（位于位置 \(r_i\)），它接收的输入是周围区域通过皮肤表面剪切波传播后，在时间上叠加到该点的信号。对每个分量 \(c\) 分别计算：
+
+\[
+m_{c,i}(t) = \sum_{j \in \Omega_i} K(d_{ij}) \, \tau_{c}^{\text{dyn}}(r_j,\, t-d_{ij}/c_s)
+\]
+
+其中：
+
+- \(d_{ij} = \|r_j-r_i\|\)
+- \(c_s = 5~\text{m/s}\)（直接用你的仿真设定）
+- \(K(d)=\exp(-d/\lambda)\)
+- \(\lambda\) 取 **4 mm**
+
+解释：
+
+- 这是一个**因果传播积分核**
+- 如果某种调制产生的波前在时空上能“对齐”，它们在受体处就会**同相叠加**
+- 这一步就是你论文叙事里最想讲的 **Coherent Integration** 的最简实现。
+
+---
+
+###### Stage 3. RAII 频率选择滤波
+
+对每个通道的积分结果 \(m_{c,i}(t)\) 施加一个固定的 RAII 频率响应滤波器 \(h_{\text{PC}}(t)\)：
+
+\[
+u_{c,i}(t) = (h_{\text{PC}} * m_{c,i})(t)
+\]
+
+实现为 **4阶 Butterworth 带通滤波器**，参数如下：
+
+- 截止频率：**150 Hz – 300 Hz**
+- 目标：锁定在 200 Hz 附近的敏感区，同时抑制低频噪声和高次谐波（如 400 Hz）。
+
+这点很重要：
+如果你把滤波做得过窄，审稿人会怀疑你是在“专门打压 LM_L”。
+真实的 Pacinian 不是只对 200 Hz 响应，而是**在 200 附近最敏感**。
+
+---
+
+###### Stage 4. 快适应脉冲生成 (LIF)
+
+将每个通道的滤波输出 \(u_{c,i}(t)\) 分别送入 Leaky Integrate-and-Fire (LIF) 神经元：
+
+\[
+\tau_m \frac{dV_{c,i}}{dt} = -V_{c,i} + g\,[u_{c,i}(t)]_+
+\]
+
+当 \(V_{c,i} \ge V_{\text{th}}\) 时发放一个 spike，然后重置并进入绝对不应期。
+
+固定参数建议：
+
+- \(\tau_m = 2~\text{ms}\)
+- \(t_{\text{ref}} = 2~\text{ms}\)
+- \(V_{\text{th}} = 1.0\)
+- \(g = 1.0\) （统一增益）
+
+---
+
+###### Stage 5. 通道融合与群体读出
+
+这是与之前版本最大的区别。为了消除方向偏置，我们假设每个受体最终的有效响应由**最强的剪切分量**决定（Max-Pooling）：
+
+首先计算每个通道的**有效振动编码权重**：
+\[
+w_{c,i} = r_{c,i} \cdot VS_{c,i}(200\text{ Hz})
+\]
+其中 \(r_{c,i}\) 是发放率，\(VS_{c,i}\) 是相位锁定值。
+
+然后取三个通道的最大值作为该受体的最终权重：
+\[
+w_i = \max(w_{xy,i}, w_{xz,i}, w_{yz,i})
+\]
+
+最后生成强度分数：
+\[
+S_{\text{intensity}}=\log\left(1+\sum_i w_i\right)
+\]
+
+含义：只有**既发得多、又锁定在目标频率上**的神经活动才贡献主观强度，且受体总是对最强的剪切方向做出响应。
+
+---
+
+##### 这个模型里，Lamellar Schwann cell (LSC) 怎么处理？
+
+这是个必须回答的问题，因为 2025 Science Advances 的结果很新，也很关键。
+
+###### 处理方式
+
+**不单独建 LSC 细胞模型。**
+
+而是把 LSC 对终末敏感性的增强作用，**吸收到 Stage 2 的有效 inner-core 相干积分核里**。
+
+###### 为什么这么做是对的
+
+因为：
+
+1. 你没有人类手掌下 Pacinian inner core 的参数
+2. Ziolkowski 2025 证明 LSC 是 mechanosensitive 并能增强 terminal sensitivity，但并没有给出可直接迁移到人类皮肤的完整动力学参数
+3. 如果你强行建“LSC + terminal 双细胞耦合 + gap junction + mechanosensitive current”，会立刻过复杂
+
+所以最合理的审稿人友好说法是：
+
+> 本模型将 inner core（包括 afferent terminal 与 lamellar Schwann cell 的联合机械整合作用）视为一个有效时空积分算子，而不显式区分每个细胞组分，以避免在人类参数未知条件下引入不可验证自由度。
+
+这是**科学且克制**的处理。
+
+---
+
+##### 输入与输出定义
+
+###### 输入
+
+对每个调制条件 \(m\)：
+
+必需输入
+
+- `tau_roi_steady_xy` : \((N_x,N_y,N_t)\)
+- `tau_roi_steady_xz` : \((N_x,N_y,N_t)\)
+- `tau_roi_steady_yz` : \((N_x,N_y,N_t)\)
+- `roi_x_vec` : \((N_x,)\)
+- `roi_y_vec` : \((N_y,)\)
+- `t_vec_steady` : \((N_t,)\)
+
+固定生理参数
+
+- `c_s = 5.0 m/s`
+- `lambda_space = 4 mm`
+- `pc_bandpass = [150, 300] Hz` (4th order)
+- `tau_m = 2 ms`
+- `t_ref = 2 ms`
+
+---
+
+###### 输出
+
+一级输出：神经动力学输出
+
+对每个虚拟受体 \(i\)：
+
+- `spike_times_i` (merged or per-channel)
+- `rate_i`
+- `vector_strength_i_200Hz`
+
+二级输出：群体读出
+
+- `intensity_score`: \(S_{\text{intensity}}\)
+
+##### 从模型输出映射到实验1主观结果
+
+你实验1是 2-AFC 配对比较，所以最干净的映射方式不是回归绝对评分，而是直接生成**成对选择概率**。
+
+对于任意方法 \(A\) 与 \(B\)：
+
+\[
+P(A \succ B)=\sigma(\hat S_A-\hat S_B)
+\]
+
+其中：
+
+- \(\sigma\) 是 logistic 函数
+- \(\hat S\) 是对 5 个条件中心化后的 standardized score
+
+你分别对任务做：
+
+- 强度任务：用 \(S_{\text{intensity}}\)
+
+然后输出：
+
+- 预测排序
+- 预测 pairwise 胜率矩阵
+- 与实验 Bradley–Terry 分数的秩相关
+- 与实验 pairwise 胜率的 MAE / rank agreement
+
+###### 重要说明
+
+这里**不要**为了贴合实验结果，再拟合方法特异参数。
+最多允许：
+
+- 一个全局 z-score 标准化
+- 一个统一 logistic 映射
+
+这不会引入方法先验，也不会让人觉得你在“用心理物理结果反推模型”。
+
+---
+
+##### 审稿人最容易接受的写法
+
+你在论文里不要说“我们模拟了所有触觉受体”。
+这会给自己找麻烦。
+
+你应该写：
+
+> We developed a minimal mechanistically grounded peripheral neural model tailored to the dominant vibrotactile channel engaged by 200-Hz ultrasonic haptics: the Pacinian/RAII pathway. The model converts simulated spatiotemporal shear stress fields into afferent population responses via causal wave-propagation integration, fixed RAII frequency tuning, and fast-adapting spike generation.
+
+核心关键词：
+
+- minimal
+- mechanistically grounded
+- Pacinian-dominant
+- causal wave-propagation integration
+- fixed frequency tuning
+- fast-adapting spike generation
+
+---
+
+#### 计算神经动力学模型结果
+
+```json
+{
+  "backend": "gpu",
+  "n_receptors": 441,
+  "methods": {
+    "DLM_2": {
+      "intensity_score": 11.04051390573525,
+      "mean_rate_hz": 414.94167411415543,
+      "mean_vector_strength": 0.353060915480675
+    },
+    "DLM_3": {
+      "intensity_score": 11.032646793244758,
+      "mean_rate_hz": 414.94167411415543,
+      "mean_vector_strength": 0.34992262497143334
+    },
+    "ULM_L": {
+      "intensity_score": 11.048487293680106,
+      "mean_rate_hz": 416.3024360537514,
+      "mean_vector_strength": 0.3620776488325163
+    },
+    "LM_L": {
+      "intensity_score": 11.00637361899716,
+      "mean_rate_hz": 408.1378644161752,
+      "mean_vector_strength": 0.35368818882506703
+    },
+    "LM_C": {
+      "intensity_score": 11.029612323836739,
+      "mean_rate_hz": 413.49019471191957,
+      "mean_vector_strength": 0.3451088707834632
+    }
+  },
+  "intensity_zscore": {
+    "DLM_2": 0.6335783485196487,
+    "DLM_3": 0.07895874895979978,
+    "ULM_L": 1.1956902077890912,
+    "LM_L": -1.773260524373688,
+    "LM_C": -0.13496678089460107
+  },
+  "pairwise": {
+    "intensity": [
+      {
+        "A": "DLM_2",
+        "B": "DLM_3",
+        "preference_index": 0.6352067077920323
+      },
+      {
+        "A": "DLM_2",
+        "B": "ULM_L",
+        "preference_index": 0.363058957186022
+      },
+      {
+        "A": "DLM_2",
+        "B": "LM_L",
+        "preference_index": 0.9173473173587731
+      },
+      {
+        "A": "DLM_2",
+        "B": "LM_C",
+        "preference_index": 0.683206092016279
+      },
+      {
+        "A": "DLM_3",
+        "B": "ULM_L",
+        "preference_index": 0.2466180675718114
+      },
+      {
+        "A": "DLM_3",
+        "B": "LM_L",
+        "preference_index": 0.8643874605960937
+      },
+      {
+        "A": "DLM_3",
+        "B": "LM_C",
+        "preference_index": 0.5532783508144048
+      },
+      {
+        "A": "ULM_L",
+        "B": "LM_L",
+        "preference_index": 0.9511515486964555
+      },
+      {
+        "A": "ULM_L",
+        "B": "LM_C",
+        "preference_index": 0.7909492876533248
+      },
+      {
+        "A": "LM_L",
+        "B": "LM_C",
+        "preference_index": 0.1626973669214044
+      }
+    ]
+  }
+}
+```
+
 
 #### 重要经典参考文献
 
@@ -542,3 +984,17 @@ Nature/Science 旗下的所有适合的子刊。
 [5] Talbot W H，Darian-Smith I，Kornhuber H H，et al. The sense of flutter-vibration: comparison of the human capacity with response patterns of mechanoreceptive afferents from the monkey hand. Journal of Neurophysiology，1968，31（2）：301-334.
 [6] Mountcastle V B，Talbot W H，Darian-Smith I，et al. Neural basis of the sense of flutter-vibration. Science，1967，155（3762）：597-600.
 [7] Loewenstein W R，Skalak R. Mechanical transmission in a pacinian corpuscle. an analysis and a theory. Journal of Physiology，1966，182（2）：346-378.
+
+
+### AI-Driven Discovery
+
+
+
+
+
+### 应用 Application
+
+
+
+
+
