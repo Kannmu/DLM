@@ -110,6 +110,54 @@ To achieve precise phase control for beamforming, the system employs a Direct Me
 
 The amplification stage utilizes a bipolar drive topology to maximize the acoustic pressure output from the available \qty{12}{\volt} supply. As illustrated in the schematic (\cref{fig:supplementary_figure_transducer_driver_circuit}), the logic-level signal (SIG) is fed into a dual-channel low-side MOSFET driver (IX4428MTR, IXYS Integrated Circuits Division). The driver is configured to output two complementary square waves (OUTA and OUTB) to the transducer terminals. This push-pull configuration effectively doubles the voltage swing across the piezoelectric element to \qty{24}{\volt} peak-to-peak (Vpp). Each channel is equipped with a transient voltage suppressor (TVS) diode (ESD5451N) for electrostatic discharge protection and a status LED for visual monitoring of channel activity (\cref{fig:supplementary_figure_umh_device}g).
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figure_Intensity_Test.pdf}
+    \caption{\textbf{Hardware calibration of the UMH device output magnitude and validation of the PWM-to-acoustic transfer function.} \textbf{a}, Photograph of the rigid calibration fixture used for acoustic output measurement. A receiver transducer identical to the emitting elements was mounted at the geometric focal position above the array by a custom 3D-printed PETG holder, thereby fixing the receiver at \qty{100}{\milli\meter} above the array center. \textbf{b}, Comparison between the theoretical transfer functions and the experimentally measured normalized output. The horizontal axis reports the PWM duty ratio $D$, which is linearly mapped from the firmware strength command. Light and dark green dashed curves indicate the theoretical normalized pressure and intensity, respectively. Circular markers show the measured normalized pressure, obtained from the received steady-state $V_{pp}$, and square markers show the corresponding normalized intensity inferred from the squared normalized voltage. The inset histogram summarizes the absolute intensity deviation $|\Delta I|$ between measurement and theory across all sampled duty ratios.}
+    \label{fig:supplementary_figure_intensity_test}
+\end{figure}
+
+To support the absolute detection-threshold measurements in Experiment~2, the device output had to be adjustable in physically meaningful and approximately equal perceptual increments. However, the firmware controls the ultrasonic emission strength through pulse-width modulation of the bipolar driver stage rather than through a directly linear acoustic amplitude source. Consequently, the user-level strength parameter is not linearly proportional to the emitted acoustic pressure or to the resulting acoustic radiation force on the skin. Because the adaptive staircase procedure assumes a monotonic and well-characterized mapping between command level and physical stimulus magnitude, we explicitly derived and validated the transfer function from the PWM command to the effective acoustic output.
+
+The derivation starts from the bipolar square-wave excitation applied to each transducer at the carrier frequency of \qty{40}{\kilo\hertz}. Let $D$ denote the one-sided PWM duty ratio within the available half-cycle control range, with $D \in [0,0.5]$. In the firmware, the dimensionless strength command $S \in [0,100]$ is mapped linearly to the duty ratio according to
+\begin{equation}
+    D = 0.5\frac{S}{100}.
+\end{equation}
+For a bipolar rectangular waveform with duty ratio $D$, Fourier decomposition shows that the amplitude of the fundamental \qty{40}{\kilo\hertz} component is proportional to $\sin(\pi D)$. Since focal acoustic pressure is proportional to the carrier-frequency fundamental voltage component, the normalized acoustic pressure can be written as
+\begin{equation}
+    P_{\mathrm{norm}}(D) = \sin(\pi D).
+\end{equation}
+Substituting the strength mapping yields the equivalent command-domain expression
+\begin{equation}
+    P_{\mathrm{norm}}(S) = \sin\!\left(\frac{\pi}{2}\frac{S}{100}\right).
+\end{equation}
+Under the standard approximation that acoustic intensity and radiation-force magnitude scale with squared acoustic pressure, the corresponding normalized intensity transfer function becomes
+\begin{equation}
+    I_{\mathrm{norm}}(D) = P_{\mathrm{norm}}^2(D) = \sin^2(\pi D),
+\end{equation}
+or equivalently
+\begin{equation}
+    I_{\mathrm{norm}}(S) = \sin^2\!\left(\frac{\pi}{2}\frac{S}{100}\right).
+\end{equation}
+These expressions define the ideal command-to-output transfer law expected from the hardware if the transducer, driver, and acoustic propagation stages remain approximately linear at the carrier frequency.
+
+We then performed a dedicated benchtop calibration experiment to test this prediction empirically. The measurement setup is shown in \cref{fig:supplementary_figure_intensity_test}a. A rigid holder was custom-designed and fabricated by 3D printing in PETG so that it mechanically registered to the outer geometry of the phased-array housing. The holder positioned a receiver transducer of the same model as the transmitting elements directly above the geometric center of the array at the nominal focus location $(0,0,\qty{0.1}{\meter})$. This arrangement minimized placement variability across measurements and ensured that all recordings were obtained at a fixed spatial point coincident with the intended focal target used in the psychophysical experiments.
+
+During calibration, the UMH device was configured in a static single-focus mode, and the focal point was kept fixed at the center of the measurement volume. The strength command was swept from $S=5$ to $S=100$ in increments of 5, corresponding to 20 sampled duty ratios from $D=0.025$ to $D=0.5$. At each setting, we recorded the steady-state peak-to-peak voltage $V_{pp}(S)$ generated across the receiver transducer terminals using an oscilloscope (DS1104, RIGOL TECHNOLOGIES CO., LTD) after the field had stabilized. The maximum measured value occurred at full-scale drive, where $V_{pp}(100)=\qty{14.1}{\volt}$. We then formed the measured normalized pressure as
+\begin{equation}
+    \widehat{P}_{\mathrm{norm}}(S)=\frac{V_{pp}(S)}{V_{pp}(100)},
+\end{equation}
+and the measured normalized intensity as
+\begin{equation}
+    \widehat{I}_{\mathrm{norm}}(S)=\left[\frac{V_{pp}(S)}{V_{pp}(100)}\right]^2.
+\end{equation}
+This normalization removes the absolute gain factor of the receiver chain and allows a direct comparison between theory and experiment at the level of transfer-function shape.
+
+The measured data closely followed the theoretically predicted sinusoidal transfer law over the full command range, as shown in \cref{fig:supplementary_figure_intensity_test}b. For normalized pressure, the correlation between measurement and theory was $r=0.998$ with a root-mean-square error of $\mathrm{RMSE}=0.031$. For normalized intensity, the agreement remained similarly high, with $r=0.997$ and $\mathrm{RMSE}=0.040$. These values indicate that the hardware reproduces the expected nonlinear control law with high fidelity and that the dominant shaping of output magnitude is captured by the first-principles Fourier model of the PWM-driven bipolar excitation.
+
+The residual structure is also informative. The largest absolute intensity deviation was below 0.07 and occurred near $D=0.20$ (approximately $S=40$), as summarized by the inset histogram in \cref{fig:supplementary_figure_intensity_test}b. The deviations were systematically larger in the lower-duty-ratio regime than near saturation. This pattern is consistent with two practical effects. First, under narrow-pulse excitation the transient electromechanical response of the piezoelectric transducer is more sensitive to finite switching time and internal damping, so the emitted carrier component need not follow the ideal square-wave decomposition exactly. Second, the receiver voltage is smaller at low drive levels, which reduces the measurement signal-to-noise ratio and amplifies the relative contribution of oscilloscope quantization and environmental fluctuations. Even so, the remaining discrepancy was small compared with the dynamic range of the full transfer curve.
+
+This calibration served two purposes for the subsequent psychophysical threshold experiment. On the methodological side, it established a validated forward mapping from the software strength command to physical output, allowing staircase levels to be interpreted in terms of normalized acoustic intensity rather than arbitrary digital units. On the mechanistic side, it confirmed that the device does not introduce a hidden irregularity or non-monotonicity that could confound comparisons among modulation strategies near threshold. Because the experimentally measured transfer function was nearly identical to the theoretical prediction, the command-domain intensity in Experiment~2 could be treated as a well-behaved, monotonic proxy for the actual focal radiation-force magnitude delivered by the UMH hardware.
 
 \begin{figure}[htbp]
     \centering
@@ -134,18 +182,18 @@ As illustrated in \cref{fig:supplementary_figure_transducer_array_arrangement_fo
 
 \SupplementarySection{Psychophysical experimental details}
 
-Experiment~1 was designed as a within-participant paired-comparison psychophysical study to resolve perceptual differences among five ultrasonic spatiotemporal modulation strategies under weak near-threshold tactile conditions. The five tested stimuli were 
+Experiment~1 was designed as a within-participant paired-comparison psychophysical study to resolve perceptual differences among five ultrasonic spatiotemporal modulation strategies under weak near-threshold tactile conditions. The five tested stimuli were
 $DLM_2$, $DLM_3$, $ULM_L$, $LM_L$, and $LM_C$, corresponding respectively to two-point discrete lateral modulation, three-point discrete lateral modulation, unidirectional linear lateral modulation, bidirectional linear lateral modulation, and continuous circular lateral modulation. We selected a forced-comparison design because absolute ratings are unstable when the tactile magnitude of each individual ultrasonic stimulus is small and because paired judgments provide higher sensitivity for detecting relative perceptual ordering~\citep{bradleyRankAnalysisIncomplete1952, johnsonNeuralBasisHaptic2002}. The experiment therefore aimed to estimate relative perceptual dominance rather than absolute magnitude.
 
 All stimulation was delivered with the custom UMH device described above. The carrier frequency of the phased array was \qty{40}{\kilo\hertz}, whereas the tactile modulation frequency was fixed at \qty{200}{\hertz}, a range strongly coupled to the Pacinian-dominant vibrotactile channel of glabrous skin~\citep{mountcastleNeuralBasisSense1967, talbotSenseFluttervibrationComparison1968a, johnsonRolesFunctionsCutaneous2001, handlerMechanosensoryNeuronsTouch2021}. Participants placed the palm on a foam support that fixed the hand-device distance and reduced posture-dependent variability in acoustic coupling. They wore noise-cancelling headphones continuously playing white noise so that judgments relied on cutaneous sensation rather than on airborne acoustic leakage or switching sounds from the phased array. These controls were critical because several modulation methods, especially the discrete switching conditions, can generate audible artifacts that might otherwise provide non-tactile cues.
 
 The five stimuli were parameterized around a common focal center at $(0,0,\qty{0.1}{\meter})$. The modulation frequency was fixed at $f=\qty{200}{\hertz}$, giving a period of
 \begin{equation}
-T = \frac{1}{f} = \qty{5}{\milli\second} .
+    T = \frac{1}{f} = \qty{5}{\milli\second} .
 \end{equation}
 Trajectory geometry was chosen from the assumed cutaneous shear-wave speed $c_s=\qty{5}{\meter\per\second}$ so that the programmed focal transition times or scan velocities approximately matched the propagation timescale of surface waves. For $DLM_2$, the focal points lay on a ring of radius $R_{2}=\qty{6.25}{\milli\meter}$, so that the distance between the two diametrically opposed points was $2R_{2}=\qty{12.5}{\milli\meter}=c_sT/2$. For $DLM_3$, the focal points formed an equilateral triangle on a ring of radius $R_{3}=\qty{4.81}{\milli\meter}$, such that the adjacent-point spacing satisfied $\sqrt{3}R_{3}\approx \qty{8.33}{\milli\meter}=c_sT/3$. For $ULM_L$, the focus traversed a unidirectional linear path of length $L_{U}=\qty{30}{\milli\meter}$ in each period, yielding an effective scan speed
 \begin{equation}
-v_U = \frac{L_U}{T} = \qty{6}{\meter\per\second} \approx 1.2\,c_s .
+    v_U = \frac{L_U}{T} = \qty{6}{\meter\per\second} \approx 1.2\,c_s .
 \end{equation}
 For $LM_L$, the focus moved bidirectionally between two endpoints separated by \qty{15}{\milli\meter}; because the focus covered the outbound and return paths within one modulation period, the total travelled distance per period was \qty{30}{\milli\meter}, again corresponding to an average path speed of \qty{6}{\meter\per\second}. For $LM_C$, the focus moved continuously along a circular trajectory of radius $R_C=\qty{4.77}{\milli\meter}$, for which the tangential speed was set to the same Mach number regime, $v_C\approx \qty{6}{\meter\per\second} \approx 1.2\,c_s$. Matching the nominal kinematic scale across conditions reduced confounding by trivial differences in scan frequency or gross path length and focused the comparison on how different spatiotemporal wave organizations shape perception.
 
@@ -161,37 +209,37 @@ A priori sample-size estimation was carried out in G*Power using an effect size 
 
 The primary analysis treated paired choices as comparative preference data and modeled them with a Bayesian mixed-effects Bradley--Terry framework~\citep{bradleyRankAnalysisIncomplete1952}. For each block, the raw trial table was converted into long format, with one row per valid paired comparison. Let stimuli $i$ and $j$ denote the first and second members of a presented pair for a given trial, and let $Y_{n}=1$ if stimulus $i$ was chosen over stimulus $j$ on trial $n$, and $Y_{n}=0$ otherwise. The probability that stimulus $i$ defeats stimulus $j$ was modeled as
 \begin{equation}
-\Pr(Y_n=1)=\frac{\exp\left(\lambda_i-\lambda_j+b_{p[n]}\right)}{1+\exp\left(\lambda_i-\lambda_j+b_{p[n]}\right)} ,
+    \Pr(Y_n=1)=\frac{\exp\left(\lambda_i-\lambda_j+b_{p[n]}\right)}{1+\exp\left(\lambda_i-\lambda_j+b_{p[n]}\right)} ,
 \end{equation}
 where $\lambda_i$ and $\lambda_j$ are fixed-effect latent scores for the two modulation methods and $b_{p[n]}$ is the participant-specific random intercept for the participant $p[n]$ who generated trial $n$. In implementation, the model was estimated using a binomial Bayesian mixed generalized linear model, with participant identity entered as a random effect. After fitting, the estimated method scores were mean-centered,
 \begin{equation}
-\tilde{\lambda}_i = \lambda_i - \frac{1}{K}\sum_{k=1}^{K}\lambda_k,
+    \tilde{\lambda}_i = \lambda_i - \frac{1}{K}\sum_{k=1}^{K}\lambda_k,
 \end{equation}
 where $K=5$ is the number of modulation methods. This zero-centered representation preserves all pairwise contrasts while making the average method score equal to zero, which simplifies visual comparison between methods and between task blocks.
 
 For descriptive inspection before model fitting, we constructed a win matrix for each block. Its $(i,j)$ element counted the number of trials on which method $i$ was chosen over method $j$. The win matrix provides an intuitive summary of pairwise dominance structure, but inferential conclusions were based on the mixed-effects Bradley--Terry estimates and their covariance. Pairwise contrasts between methods were evaluated using Wald statistics derived from the fitted score covariance matrix. For a contrast between methods $i$ and $j$, we computed
 \begin{equation}
-\Delta_{ij}=\tilde{\lambda}_i-\tilde{\lambda}_j,
-\qquad
-z_{ij}=\frac{\Delta_{ij}}{\sqrt{\mathrm{Var}(\Delta_{ij})}},
+    \Delta_{ij}=\tilde{\lambda}_i-\tilde{\lambda}_j,
+    \qquad
+    z_{ij}=\frac{\Delta_{ij}}{\sqrt{\mathrm{Var}(\Delta_{ij})}},
 \end{equation}
 with two-sided $p$ values obtained from the standard normal distribution. We also report the corresponding odds ratio,
 \begin{equation}
-\mathrm{OR}_{ij}=\exp(\Delta_{ij}),
+    \mathrm{OR}_{ij}=\exp(\Delta_{ij}),
 \end{equation}
 which quantifies the multiplicative advantage of method $i$ over method $j$ in the paired-comparison choice probability. Statistical significance was annotated using the conventional thresholds $p<0.05$, $p<0.01$, and $p<0.001$.
 
 We analyzed decision time as a secondary marker of discriminability. Longer decisions were interpreted as indicating smaller perceptual distances between the two methods being compared. Reaction times shorter than \qty{0.2}{\second} or longer than \qty{10}{\second} were treated as invalid and excluded from this analysis. For the remaining trials, raw reaction time $RT$ was natural-log transformed to reduce right skew,
 \begin{equation}
-\mathrm{LogRT}=\ln(RT),
+    \mathrm{LogRT}=\ln(RT),
 \end{equation}
 and then standardized within participant to remove idiosyncratic baseline response speed,
 \begin{equation}
-Z\mathrm{LogRT}_{n}=\frac{\mathrm{LogRT}_{n}-\mu_{p[n]}}{\sigma_{p[n]}} ,
+    Z\mathrm{LogRT}_{n}=\frac{\mathrm{LogRT}_{n}-\mu_{p[n]}}{\sigma_{p[n]}} ,
 \end{equation}
 where $\mu_{p[n]}$ and $\sigma_{p[n]}$ are the participant-specific mean and standard deviation of log reaction time. Trials from participants with zero or undefined within-participant variance were assigned a standardized value of zero in the implementation. We then averaged $Z\mathrm{LogRT}$ across all presentations of each unordered stimulus pair to form a symmetric reaction-time matrix. Darker values in the corresponding heat map indicate longer normalized decisions and, by inference, smaller perceptual separation between the two compared stimuli.
 
-Visualization followed the structure of the statistical analysis. For the Intensity and Spatial blocks, each method was displayed as a bar whose height represented the centered Bradley--Terry score, with error bars corresponding to the 
+Visualization followed the structure of the statistical analysis. For the Intensity and Spatial blocks, each method was displayed as a bar whose height represented the centered Bradley--Terry score, with error bars corresponding to the
 \qty{95}{\percent} confidence interval approximated as $\pm 1.96\times SE$. Significant pairwise contrasts were marked directly on the plots. Reaction-time results were summarized as a stimulus-by-stimulus heat map of mean standardized log reaction time. Together, these visualizations allowed us to compare perceptual rank order, uncertainty, pairwise separability, and decision difficulty within a single coherent analytical framework.
 
 The principal findings, taken directly from the finalized analysis reported in the project record, were as follows. In the Intensity block, $ULM_L$ achieved the highest centered Bradley--Terry score ($0.74\pm0.11$), followed by $DLM_2$ ($0.34\pm0.11$), $DLM_3$ ($-0.04\pm0.11$), $LM_C$ ($-0.18\pm0.11$), and $LM_L$ ($-0.86\pm0.12$). $ULM_L$ was significantly preferred over every other method, and $LM_L$ performed worst overall. In the Spatial block, $ULM_L$ again showed the highest score ($0.24\pm0.10$), followed by $DLM_2$ ($0.11\pm0.10$), $DLM_3$ ($-0.04\pm0.10$), $LM_C$ ($-0.08\pm0.10$), and $LM_L$ ($-0.23\pm0.10$). However, spatial judgments were less strongly separated than intensity judgments, and only a subset of pairwise contrasts reached significance. Reaction-time analysis showed that decisions were slowest for pairs such as $DLM_3$ versus $LM_C$ and $ULM_L$ versus $DLM_2$, consistent with the close perceptual proximity of those pairs in the Bradley--Terry score space. By contrast, comparisons involving $LM_L$ were typically faster, consistent with its relatively poor perceptual performance and therefore easier exclusion in forced-choice decisions.
@@ -202,149 +250,149 @@ These psychophysical observations informed the later mechanistic interpretation 
 
 To resolve how different ultrasonic spatiotemporal modulation strategies reorganize mechanically relevant wave propagation within soft tissue, we performed three-dimensional elastodynamic simulations using the k-Wave pseudo-spectral time-domain elastic solver \texttt{pstdElastic3D} in MATLAB. The implementation followed the exact numerical configuration used in the analysis script. The simulated tissue block occupied a Cartesian domain of \qtyproduct{80 x 80 x 40}{\milli\meter}, discretized on a uniform grid with
 \begin{equation}
-\Delta x = \Delta y = \Delta z = \qty{1.0}{\milli\meter},
+    \Delta x = \Delta y = \Delta z = \qty{1.0}{\milli\meter},
 \end{equation}
 which yielded $N_x=N_y=80$ and $N_z=40$ grid points after enforcing even grid dimensions for the spectral solver. Time integration used a Courant--Friedrichs--Lewy factor of $\mathrm{CFL}=0.3$, so that the temporal step was defined by
 \begin{equation}
-\Delta t = \mathrm{CFL}\frac{\Delta x}{c_{p,\mathrm{sim}}},
+    \Delta t = \mathrm{CFL}\frac{\Delta x}{c_{p,\mathrm{sim}}},
 \end{equation}
 where $c_{p,\mathrm{sim}}$ is the compressional wave speed used in the simulation. With $c_{p,\mathrm{sim}}=\qty{100}{\meter\per\second}$, this gave $\Delta t=\qty{3}{\micro\second}$. The modulation frequency was fixed at
 \begin{equation}
- f_0 = \qty{200}{\hertz},
- \qquad
- T = \frac{1}{f_0} = \qty{5}{\milli\second},
+    f_0 = \qty{200}{\hertz},
+    \qquad
+    T = \frac{1}{f_0} = \qty{5}{\milli\second},
 \end{equation}
 and the total simulation duration was set to 15 modulation cycles,
 \begin{equation}
- t_{\mathrm{sim}} = 15T = \qty{75}{\milli\second},
+    t_{\mathrm{sim}} = 15T = \qty{75}{\milli\second},
 \end{equation}
 so that both the transient build-up and the late steady-state regime could be inspected within a single run.
 
 The medium was modeled as homogeneous, isotropic, and linearly elastic with frequency-dependent attenuation. The assigned material parameters were density $\rho=\qty{923.5}{\kilo\gram\per\cubic\meter}$, shear-wave speed $c_s=\qty{5.0}{\meter\per\second}$, and simulated compressional-wave speed $c_{p,\mathrm{sim}}=\qty{100}{\meter\per\second}$. The corresponding shear modulus was therefore
 \begin{equation}
- G = \rho c_s^2,
+    G = \rho c_s^2,
 \end{equation}
 which gives $G\approx \qty{23.1}{\kilo\pascal}$. In the source code, we also retained the physical-order compressional speed parameter $c_p=\qty{1540}{\meter\per\second}$ as a reference material property, while the reduced value $c_{p,\mathrm{sim}}$ was used for time stepping and wave propagation to preserve the scale separation $c_{p,\mathrm{sim}} \gg c_s$ but substantially reduce computational burden. This numerical approximation is appropriate here because the scientific objective was not to reproduce high-speed bulk compressional transients in detail, but to isolate the slower lateral shear-wave dynamics that dominate the tactile spatiotemporal structure at the receptor-relevant depth.
 
 Attenuation was prescribed separately for compressional and shear modes using frequency power laws,
 \begin{equation}
- \alpha_p(f) = \alpha_{p0} f^{y_p},
- \qquad
- \alpha_s(f) = \alpha_{s0} f^{y_s},
+    \alpha_p(f) = \alpha_{p0} f^{y_p},
+    \qquad
+    \alpha_s(f) = \alpha_{s0} f^{y_s},
 \end{equation}
 with $\alpha_{p0}=\qty{0.1}{\decibel\per\mega\hertz\tothe{1.5}\per\centi\meter}$, $y_p=1.5$, $\alpha_{s0}=\qty{10}{\decibel\per\mega\hertz\squared\per\centi\meter}$, and $y_s=2.0$. To approximate a mechanically semi-infinite substrate and suppress non-physical reflections, the simulations used external perfectly matched layers with configuration \texttt{PMLSize}$=[20,20,10]$, \texttt{PMLInside}$=\mathrm{false}$, and \texttt{PMLAlpha}$=[2,2,0]$. In addition, the lower part of the domain was assigned an extra quadratic sponge layer over the final 20 grid planes, implemented as
 \begin{equation}
- \alpha_{\mathrm{sponge}}(k)=\alpha_{\max}\left(\frac{k-1}{N_{\mathrm{sponge}}-1}\right)^2,
- \qquad k=1,\dots,N_{\mathrm{sponge}},
+    \alpha_{\mathrm{sponge}}(k)=\alpha_{\max}\left(\frac{k-1}{N_{\mathrm{sponge}}-1}\right)^2,
+    \qquad k=1,\dots,N_{\mathrm{sponge}},
 \end{equation}
 with $N_{\mathrm{sponge}}=20$ and $\alpha_{\max}=30$, and added to both compressional and shear attenuation coefficients at the bottom boundary. This dual treatment ensured that the observed lateral wave patterns arose from the imposed modulation trajectories rather than from reverberation within a shallow box.
 
 The excitation was introduced as a normal stress source applied on the top surface, consistent with the fact that airborne ultrasonic haptics loads the skin predominantly through acoustic radiation pressure normal to the surface. Let the focal center at time $t$ be denoted by $(x_f(t),y_f(t))$. The imposed surface stress on the $z=0$ plane was
 \begin{equation}
- S_{zz}(x,y,t) = -S_0 \exp\!\left[-\frac{(x-x_f(t))^2+(y-y_f(t))^2}{2\sigma^2}\right],
+    S_{zz}(x,y,t) = -S_0 \exp\!\left[-\frac{(x-x_f(t))^2+(y-y_f(t))^2}{2\sigma^2}\right],
 \end{equation}
 with peak magnitude $S_0=\qty{100}{\pascal}$ and Gaussian width $\sigma=\qty{4.25}{\milli\meter}$. The negative sign follows the convention of the elastic solver for compressive normal loading. Importantly, the implemented source was not amplitude-modulated by a sinusoidal envelope. Instead, the \qty{200}{\hertz} temporal structure arose entirely from the periodic motion of the focal center itself, so that the modulation period was encoded kinematically through the trajectory function $(x_f(t),y_f(t))$. This detail is essential for interpreting the subsequent spectra and wavefronts, because the harmonic structure depends directly on how the focus moves through space over each cycle.
 
 The five stimulation conditions reproduced the exact trajectory definitions used in Experiment~1. For the discrete lateral modulation conditions, the focus jumped among equally spaced points on a circle. If a modulation cycle was divided into $N$ equal phase sectors, the active point index was given by
 \begin{equation}
- n(t)=\left\lfloor N\frac{\mathrm{mod}(t,T)}{T}\right\rfloor+1,
+    n(t)=\left\lfloor N\frac{\mathrm{mod}(t,T)}{T}\right\rfloor+1,
 \end{equation}
 and the corresponding focal coordinates were
 \begin{equation}
- x_f(t)=R\cos\theta_{n(t)},
- \qquad
- y_f(t)=R\sin\theta_{n(t)},
- \qquad
- \theta_n = (n-1)\frac{2\pi}{N}.
+    x_f(t)=R\cos\theta_{n(t)},
+    \qquad
+    y_f(t)=R\sin\theta_{n(t)},
+    \qquad
+    \theta_n = (n-1)\frac{2\pi}{N}.
 \end{equation}
 For $DLM_2$, we used $N=2$ and $R=\qty{6.25}{\milli\meter}$, so that the separation between the two diametrically opposed loading points was
 \begin{equation}
- d_{\mathrm{DLM_2}} = 2R = \qty{12.5}{\milli\meter} = c_s\frac{T}{2}.
+    d_{\mathrm{DLM_2}} = 2R = \qty{12.5}{\milli\meter} = c_s\frac{T}{2}.
 \end{equation}
 For $DLM_3$, we used $N=3$ and $R=\qty{4.81}{\milli\meter}$, for which the nearest-neighbor spacing on the three-point ring is
 \begin{equation}
- d_{\mathrm{DLM_3}} = \sqrt{3}R \approx \qty{8.33}{\milli\meter} \approx c_s\frac{T}{3}.
+    d_{\mathrm{DLM_3}} = \sqrt{3}R \approx \qty{8.33}{\milli\meter} \approx c_s\frac{T}{3}.
 \end{equation}
 These geometric relations were chosen so that the shear-wave travel distance over one switching interval approximately matched the spacing between successive actuation sites, thereby testing whether delayed constructive recruitment could be enhanced by modulation-synchronized propagation.
 
 For the continuous scanning conditions, the focal center was advanced continuously along line or circle trajectories. In the unidirectional linear scan $ULM_L$, the focus moved from $-L/2$ to $+L/2$ within every cycle according to
 \begin{equation}
- x_f(t) = -\frac{L}{2}+L\frac{\mathrm{mod}(t,T)}{T},
- \qquad
- y_f(t)=0,
+    x_f(t) = -\frac{L}{2}+L\frac{\mathrm{mod}(t,T)}{T},
+    \qquad
+    y_f(t)=0,
 \end{equation}
 with $L=\qty{30}{\milli\meter}$. The programmed scan speed was therefore
 \begin{equation}
- v_{\mathrm{ULM}} = \frac{L}{T} = \qty{6}{\meter\per\second} \approx 1.2 c_s.
+    v_{\mathrm{ULM}} = \frac{L}{T} = \qty{6}{\meter\per\second} \approx 1.2 c_s.
 \end{equation}
 For the bidirectional linear scan $LM_L$, the focus traversed a line segment of length $L=\qty{15}{\milli\meter}$ and reversed direction at mid-cycle,
 \begin{equation}
- x_f(t)=
- \begin{cases}
- -\dfrac{L}{2}+L\dfrac{\phi(t)}{0.5}, & \phi(t)<0.5,\\[6pt]
- \dfrac{L}{2}-L\dfrac{\phi(t)-0.5}{0.5}, & \phi(t)\ge 0.5,
- \end{cases}
- \qquad
- y_f(t)=0,
+    x_f(t)=
+    \begin{cases}
+        -\dfrac{L}{2}+L\dfrac{\phi(t)}{0.5},    & \phi(t)<0.5,    \\[6pt]
+        \dfrac{L}{2}-L\dfrac{\phi(t)-0.5}{0.5}, & \phi(t)\ge 0.5,
+    \end{cases}
+    \qquad
+    y_f(t)=0,
 \end{equation}
 where $\phi(t)=\mathrm{mod}(t,T)/T$. Because the outbound and return sweeps both occurred within a single period, the total distance traveled per cycle remained \qty{30}{\milli\meter}, again corresponding to an average kinematic scale of \qty{6}{\meter\per\second}. Finally, in the circular scan $LM_C$, the focal center followed
 \begin{equation}
- x_f(t)=R\cos\bigl(2\pi\phi(t)\bigr),
- \qquad
- y_f(t)=R\sin\bigl(2\pi\phi(t)\bigr),
+    x_f(t)=R\cos\bigl(2\pi\phi(t)\bigr),
+    \qquad
+    y_f(t)=R\sin\bigl(2\pi\phi(t)\bigr),
 \end{equation}
 with $R=\qty{4.77}{\milli\meter}$. Its tangential velocity was
 \begin{equation}
- v_{\mathrm{LM_C}}=\frac{2\pi R}{T}\approx \qty{6.0}{\meter\per\second},
+    v_{\mathrm{LM_C}}=\frac{2\pi R}{T}\approx \qty{6.0}{\meter\per\second},
 \end{equation}
 placing all moving-focus conditions in a closely matched velocity regime relative to the assumed shear-wave speed.
 
 The solver recorded the full stress tensor and displacement field only on a single analysis plane located at a target depth of \qty{1}{\milli\meter} beneath the loaded surface, which corresponds to the evaluation depth used throughout the script and substantially reduces memory cost during long three-dimensional elastic simulations. Specifically, the recorded observables included the three shear-stress components $\tau_{xy}$, $\tau_{xz}$, and $\tau_{yz}$, together with the out-of-plane displacement component $u_z$. From these fields, we constructed the instantaneous shear-stress magnitude
 \begin{equation}
- |\boldsymbol{\tau}|(x,y,t)=\sqrt{\tau_{xy}^2(x,y,t)+\tau_{xz}^2(x,y,t)+\tau_{yz}^2(x,y,t)}.
+    |\boldsymbol{\tau}|(x,y,t)=\sqrt{\tau_{xy}^2(x,y,t)+\tau_{xz}^2(x,y,t)+\tau_{yz}^2(x,y,t)}.
 \end{equation}
 All scalar maps shown in the supplementary figures were derived from this quantity or from one of the signed tensor components stored by the solver.
 
 To compare modulation conditions under sustained stimulation rather than during source onset, the principal steady-state metrics were evaluated over the final modulation cycle of the simulation. If $\Omega_{\mathrm{ss}}=\{t: t\ge t_{\mathrm{sim}}-T\}$ denotes this analysis window, then the root-mean-square shear magnitude was computed as
 \begin{equation}
- \tau_{\mathrm{RMS}}(x,y)=\sqrt{\frac{1}{|\Omega_{\mathrm{ss}}|}\sum_{t\in\Omega_{\mathrm{ss}}}|\boldsymbol{\tau}(x,y,t)|^2},
+    \tau_{\mathrm{RMS}}(x,y)=\sqrt{\frac{1}{|\Omega_{\mathrm{ss}}|}\sum_{t\in\Omega_{\mathrm{ss}}}|\boldsymbol{\tau}(x,y,t)|^2},
 \end{equation}
 which provides a measure of cycle-averaged dynamic load. The peak stress map was defined as
 \begin{equation}
- \tau_{\mathrm{peak}}(x,y)=\max_t |\boldsymbol{\tau}(x,y,t)|,
+    \tau_{\mathrm{peak}}(x,y)=\max_t |\boldsymbol{\tau}(x,y,t)|,
 \end{equation}
 thereby capturing the strongest transient reached at each position during the full simulated epoch. To quantify how abruptly the local mechanical drive changes in time, we further computed
 \begin{equation}
- \dot{\tau}_{\mathrm{peak}}(x,y)=\max_t \left|\frac{\partial |\boldsymbol{\tau}(x,y,t)|}{\partial t}\right|,
+    \dot{\tau}_{\mathrm{peak}}(x,y)=\max_t \left|\frac{\partial |\boldsymbol{\tau}(x,y,t)|}{\partial t}\right|,
 \end{equation}
 implemented numerically by a first-order finite difference along the temporal axis. This metric is sensitive to rapid switching events and sharp propagating fronts, and therefore complements RMS and peak magnitude by emphasizing dynamic impact rather than accumulated energy.
 
 Spatial sharpness was quantified from the gradient of the final-time stress-magnitude snapshot. Let $t_{\mathrm{end}}$ denote the last recorded time sample. The script evaluated
 \begin{equation}
- \nabla |\boldsymbol{\tau}|(x,y,t_{\mathrm{end}})=
- \left(
- \frac{\partial |\boldsymbol{\tau}|}{\partial x},
- \frac{\partial |\boldsymbol{\tau}|}{\partial y}
- \right),
+    \nabla |\boldsymbol{\tau}|(x,y,t_{\mathrm{end}})=
+    \left(
+    \frac{\partial |\boldsymbol{\tau}|}{\partial x},
+    \frac{\partial |\boldsymbol{\tau}|}{\partial y}
+    \right),
 \end{equation}
 and reported the gradient magnitude
 \begin{equation}
- G_{\tau}(x,y)=\sqrt{\left(\frac{\partial |\boldsymbol{\tau}|}{\partial x}\right)^2+
- \left(\frac{\partial |\boldsymbol{\tau}|}{\partial y}\right)^2}.
+    G_{\tau}(x,y)=\sqrt{\left(\frac{\partial |\boldsymbol{\tau}|}{\partial x}\right)^2+
+        \left(\frac{\partial |\boldsymbol{\tau}|}{\partial y}\right)^2}.
 \end{equation}
 Although this quantity is an instantaneous rather than cycle-averaged measure, it is informative because tactile localization depends not only on integrated energy but also on how steeply the field varies in space at a given phase of stimulation.
 
 The temporal structure of the wave field was characterized in several complementary ways. First, the script extracted the center waveform
 \begin{equation}
- w_c(t)=|\boldsymbol{\tau}(0,0,t)|,
+    w_c(t)=|\boldsymbol{\tau}(0,0,t)|,
 \end{equation}
 which provides a direct readout of the modulation-induced mechanical drive at the nominal focal center. Second, to visualize lateral propagation, it constructed an $x$--$t$ diagram from the signed $\tau_{xz}$ component along the midline $y=0$,
 \begin{equation}
- X_{\tau}(x,t)=\tau_{xz}(x,0,t).
+    X_{\tau}(x,t)=\tau_{xz}(x,0,t).
 \end{equation}
 Because the signed component was retained, these diagrams preserve wave polarity and make directional interference patterns visible. Third, the script captured wavefront snapshots of $\tau_{xy}$ and $u_z$ at four relative times within the first modulation cycle,
 \begin{equation}
- t_k \in \left\{\frac{T}{4},\frac{T}{2},\frac{3T}{4},T\right\},
+    t_k \in \left\{\frac{T}{4},\frac{T}{2},\frac{3T}{4},T\right\},
 \end{equation}
 so that the early cycle could be inspected before repeated stimulation fully obscured the initial propagation geometry. This first-cycle emphasis is important for distinguishing between outward radiation from a newly activated site, direction reversal in bidirectional scans, and the rotational phase progression generated by circular motion.
 
@@ -352,7 +400,7 @@ For downstream neural modeling, the script also stored a steady-state region of 
 
 For comparative display, each scalar map was normalized by the corresponding global maximum across all five modulation conditions,
 \begin{equation}
- \tilde{M}^{(m)}(x,y)=\frac{M^{(m)}(x,y)}{\max_{m',x,y} M^{(m')}(x,y)},
+    \tilde{M}^{(m)}(x,y)=\frac{M^{(m)}(x,y)}{\max_{m',x,y} M^{(m')}(x,y)},
 \end{equation}
 where $M$ denotes $\tau_{\mathrm{RMS}}$, $\tau_{\mathrm{peak}}$, $\dot{\tau}_{\mathrm{peak}}$, or $G_{\tau}$. This normalization permits direct visual comparison of relative spatial extent and field concentration without conflating each panel with its own internal color scale.
 
@@ -381,19 +429,19 @@ The model took as input the steady-state spatiotemporal shear-stress fields obta
 
 A lattice of virtual receptors was then placed across the region of interest with uniform spatial spacing of \qty{2}{\milli\meter}. This receptor lattice covered the same physical extent for every modulation method and provided a common substrate for comparing population responses. Let $r_i=(x_i,y_i)$ denote the position of receptor $i$, and let $r_j=(x_j,y_j)$ denote the location of source sample $j$ in the simulated field. For each of the three shear components, we first removed the static bias by subtracting the temporal mean at every spatial point,
 \begin{equation}
-\tau^{\mathrm{dyn}}_{c}(r_j,t)=\tau_{c}(r_j,t)-\langle \tau_{c}(r_j,\cdot)\rangle_t,
+    \tau^{\mathrm{dyn}}_{c}(r_j,t)=\tau_{c}(r_j,t)-\langle \tau_{c}(r_j,\cdot)\rangle_t,
 \end{equation}
 where $c \in \{xy,xz,yz\}$. This step reflects the well-established property that Pacinian-associated responses are driven predominantly by dynamic vibration and transients rather than by static indentation~\citep{johanssonTactileSensoryCoding1983, johnsonRolesFunctionsCutaneous2001, handlerMechanosensoryNeuronsTouch2021}. It also aligns the model with recent evidence that the Pacinian inner core is specialized for transient mechanical signaling~\citep{ziolkowskiInnerCoreEnables2025}.
 
 The central operation of the model was a causal spatiotemporal integration step intended to represent the effective summation of cutaneous surface-wave inputs that arrive at a receptor after finite propagation delay. For receptor $i$ and shear component $c$, the mechanical drive was defined as
 \begin{equation}
- m_{c,i}(t)=\sum_{j \in \Omega_i} K(d_{ij})\,\tau^{\mathrm{dyn}}_{c}\!\left(r_j, t-\frac{d_{ij}}{c_s}\right),
+    m_{c,i}(t)=\sum_{j \in \Omega_i} K(d_{ij})\,\tau^{\mathrm{dyn}}_{c}\!\left(r_j, t-\frac{d_{ij}}{c_s}\right),
 \end{equation}
 with
 \begin{equation}
- d_{ij}=\lVert r_j-r_i \rVert,
- \qquad
- K(d_{ij})=\exp\!\left(-\frac{d_{ij}}{\lambda}\right).
+    d_{ij}=\lVert r_j-r_i \rVert,
+    \qquad
+    K(d_{ij})=\exp\!\left(-\frac{d_{ij}}{\lambda}\right).
 \end{equation}
 Here $c_s=\qty{5}{\meter\per\second}$ was the cutaneous shear-wave speed used throughout the mechanical simulations, and $\lambda=\qty{4}{\milli\meter}$ set the spatial decay length of the integration kernel. The summation domain $\Omega_i$ comprised all source locations in the region of interest. This formulation embodies the key conceptual claim of the study: if a modulation strategy organizes the wavefront so that mechanically relevant disturbances arrive at a receptor with compatible timing, those inputs add constructively after propagation delay; if the modulation introduces repeated direction reversal, frequency doubling, or phase fragmentation, the effective drive is reduced because delayed components are less aligned. In that sense, the integral provides an explicit operational definition of coherent integration. The use of an exponentially decaying kernel is also consistent with the idea that the Pacinian channel pools vibration over a broad, but not unlimited, spatial extent~\citep{loewensteinMechanicalTransmissionPacinian1966, verrilloEffectContactorArea1963, saalSimulatingTactileSignals2017}.
 
@@ -401,45 +449,45 @@ We treated the contribution of the Pacinian inner core, including the combined m
 
 The delayed mechanical drive for each component was then passed through a fixed band-pass filter representing the frequency tuning of the Pacinian-dominant channel,
 \begin{equation}
- u_{c,i}(t)=(h_{\mathrm{PC}} * m_{c,i})(t),
+    u_{c,i}(t)=(h_{\mathrm{PC}} * m_{c,i})(t),
 \end{equation}
 where $h_{\mathrm{PC}}$ denotes a fourth-order Butterworth band-pass filter with cutoff frequencies at \qty{150}{\hertz} and \qty{300}{\hertz}. The filter was centered on the \qty{200}{\hertz} modulation band but was deliberately not made excessively narrow. This choice preserved a physiologically plausible sensitivity profile: the Pacinian pathway is most sensitive around this range, yet it still responds over a broader band of vibration frequencies~\citep{mountcastleNeuralBasisSense1967, talbotSenseFluttervibrationComparison1968a, bolanowskiFourChannelsMediate1988, johnsonRolesFunctionsCutaneous2001}. This stage was critical for testing the hypothesis that frequency fidelity, rather than total mechanical energy alone, governs perceptual effectiveness. In practical terms, it penalized modulation schemes whose local mechanical drive shifted substantial power into non-optimal harmonics, such as the strong \qty{400}{\hertz} component expected for bidirectional linear scanning and the higher-order harmonic contamination introduced by multi-point discrete switching.
 
 Each filtered drive $u_{c,i}(t)$ was next converted into a spike train using a leaky integrate-and-fire element,
 \begin{equation}
-\tau_m\frac{dV_{c,i}}{dt}=-V_{c,i}+g\,[u_{c,i}(t)]_{+},
+    \tau_m\frac{dV_{c,i}}{dt}=-V_{c,i}+g\,[u_{c,i}(t)]_{+},
 \end{equation}
 with membrane time constant $\tau_m=\qty{2}{\milli\second}$, absolute refractory period $t_{\mathrm{ref}}=\qty{2}{\milli\second}$, threshold $V_{\mathrm{th}}=1$, and a common gain factor $g=1$. When $V_{c,i}(t)$ reached threshold, the unit emitted one spike, the membrane state was reset, and the unit remained inactive during the refractory interval. We used this simple fast-adapting spiking model because it captures the two response properties most relevant to the present problem, namely sensitivity to temporally filtered dynamic input and capacity for phase-locked repetitive firing, while avoiding unnecessary parameterization. We did not use method-specific gains or thresholds. All five modulation methods therefore traversed the same neural nonlinearity.
 
 For each receptor and each shear component, we quantified the steady-state response by combining firing rate and phase locking to the intended modulation frequency. If receptor $i$ generated spikes at times $\{t_k\}_{k=1}^{N_i}$ for component $c$, the vector strength at \qty{200}{\hertz} was computed as
 \begin{equation}
-VS_{c,i}=\left|\frac{1}{N_i}\sum_{k=1}^{N_i} \exp\!\left(\mathrm{i}2\pi f_0 t_k\right)\right|,
+    VS_{c,i}=\left|\frac{1}{N_i}\sum_{k=1}^{N_i} \exp\!\left(\mathrm{i}2\pi f_0 t_k\right)\right|,
 \end{equation}
 with $f_0=\qty{200}{\hertz}$. Let $r_{c,i}$ denote the corresponding steady-state firing rate. We then defined a component-specific effective coding weight,
 \begin{equation}
- w_{c,i}=r_{c,i}\,VS_{c,i}.
+    w_{c,i}=r_{c,i}\,VS_{c,i}.
 \end{equation}
 This metric assigns high weight only to receptors that not only fire strongly, but also remain temporally aligned with the target modulation period. We used vector strength because the proposed mechanism predicts that perceptually effective stimuli should preserve a coherent \qty{200}{\hertz} temporal structure at the neural level, not merely elevate total spike count.
 
 The three orthogonal shear channels were combined at each receptor by a directional max-pooling rule,
 \begin{equation}
- w_i=\max\left(w_{xy,i},w_{xz,i},w_{yz,i}\right).
+    w_i=\max\left(w_{xy,i},w_{xz,i},w_{yz,i}\right).
 \end{equation}
 This operation avoids imposing an a priori preferred shear direction on the receptor population. Instead, it assumes that the relevant local drive is dominated by the shear component that is most effectively converted into phase-locked firing at that receptor. This choice was motivated by the fact that the five modulation schemes differ substantially in the orientation and evolution of their local wavefronts. A scalar equivalent-stress compression at the outset would lose that directional structure, whereas max pooling retains sensitivity to whichever component best expresses the local mechanically effective mode.
 
 The population intensity score for modulation method $m$ was then defined as
 \begin{equation}
- S^{(m)}_{\mathrm{intensity}}=\log\!\left(1+\sum_i w_i\right).
+    S^{(m)}_{\mathrm{intensity}}=\log\!\left(1+\sum_i w_i\right).
 \end{equation}
 The logarithmic compression prevents the final metric from being dominated by a small number of exceptionally active receptors and approximates a saturating population readout. Because the same readout was applied to all methods, differences in $S_{\mathrm{intensity}}$ directly reflect differences in how efficiently each modulation pattern generates spatially distributed, phase-locked, fast-adapting activity in the Pacinian-dominant pathway. Importantly, the model does not encode any explicit label indicating whether the input came from $DLM_2$, $DLM_3$, $ULM_L$, $LM_L$, or $LM_C$. Any ordering among methods must therefore arise from the interaction between the field dynamics and the fixed neural operators.
 
 To compare the model with the paired-comparison psychophysics, we transformed the five population intensity scores into standardized values,
 \begin{equation}
-\hat{S}^{(m)}=\frac{S^{(m)}_{\mathrm{intensity}}-\mu_S}{\sigma_S},
+    \hat{S}^{(m)}=\frac{S^{(m)}_{\mathrm{intensity}}-\mu_S}{\sigma_S},
 \end{equation}
 where $\mu_S$ and $\sigma_S$ are the mean and standard deviation of the five method scores. For any two methods $A$ and $B$, the predicted probability that $A$ would be preferred over $B$ in the intensity task was then written as
 \begin{equation}
-P(A \succ B)=\frac{1}{1+\exp\left[-\left(\hat{S}^{(A)}-\hat{S}^{(B)}\right)\right]}.
+    P(A \succ B)=\frac{1}{1+\exp\left[-\left(\hat{S}^{(A)}-\hat{S}^{(B)}\right)\right]}.
 \end{equation}
 This mapping introduced only a common monotonic decision function and no method-specific fitting parameters. The model therefore remained generative in the limited sense intended here: it produced an ordering and pairwise preference structure from first-principles-inspired processing of the simulated wave fields, rather than by regressing directly onto the psychophysical observations.
 
@@ -448,6 +496,17 @@ The resulting model output reproduced the principal ranking observed in the beha
 Mechanistically, the model explains why $ULM_L$ can outperform conditions with larger local mechanical extrema. In the unidirectional linear scan, the wavefront is advanced continuously in one direction at a speed close to the simulated surface-wave speed, which favors repeated arrival of mechanically relevant components with compatible delay structure. At the same time, the scan preserves the intended \qty{200}{\hertz} stimulus rhythm at a local point, so the delayed mechanical drive remains well aligned with the Pacinian band-pass filter and supports phase-locked firing. By contrast, $LM_L$ repeatedly reverses direction and traverses the same central region twice per modulation cycle, which generates strong \qty{400}{\hertz}-like periodicity and disrupts directional continuity. In the model, these properties jointly reduce the filtered drive and degrade coherent spike timing, yielding the lowest population score. $DLM_2$ occupies an intermediate but favorable regime because appropriately timed switching between two discrete points can still create strong delayed coincidence at the receptor level while introducing less harmonic contamination than the three-point discrete condition. $DLM_3$ and $LM_C$ generate more rotationally distributed wave organizations that remain effective, but they disperse mechanically useful energy across more complex directional or harmonic structures and therefore do not achieve the same population gain as $ULM_L$.
 
 Taken together, this computational neural dynamics model provides a compact mechanistic bridge between the elastic-wave simulations and the psychophysical paired-comparison results. It supports the interpretation that tactile efficacy in ultrasonic haptics is governed not by static local maxima alone, but by whether the modulation pattern delivers mechanically relevant energy to the Pacinian-dominant pathway in a temporally faithful and propagationally coherent form. In this framework, frequency fidelity and spatiotemporal coherence are not abstract descriptive labels. They become explicit computational requirements for generating strong, phase-locked afferent population responses under weak airborne ultrasonic stimulation~\citep{reardonCutaneousWavePropagation2019, reardonShearShockWaves2023, saalSimulatingTactileSignals2017}.
+
+
+
+\SupplementarySection{Sensitivity of Spatiotemporal Coherence to Scan Speed (Mach Number) in Unidirectional Lateral Modulation ($ULM_L$)}
+
+
+
+
+
+
+
 
 \bibliography{SWIM}% common bib file
 
